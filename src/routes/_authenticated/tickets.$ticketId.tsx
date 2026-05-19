@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { tickets, findConsultant, findClient, riskBadgeStyles, cohortBadgeStyles } from "@/lib/mockData";
+import { tickets, findConsultant, findClient, riskBadgeStyles, cohortBadgeStyles, type Ticket } from "@/lib/mockData";
 import { ArrowLeft, Lock, ArrowUpRight, Check } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,7 +28,7 @@ const hardGates = [
 ];
 
 function TicketDetail() {
-  const { t } = Route.useLoaderData();
+  const { t } = Route.useLoaderData() as { t: Ticket };
   const c = findConsultant(t.consultantId);
   const cl = c ? findClient(c.clientId) : undefined;
 

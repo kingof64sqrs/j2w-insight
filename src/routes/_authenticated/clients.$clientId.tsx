@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { clients, consultants, cohortBadgeStyles, fmtINR, type Cohort } from "@/lib/mockData";
+import { clients, consultants, cohortBadgeStyles, fmtINR, type Cohort, type Client } from "@/lib/mockData";
 import { Search, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId")({
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/clients/$clientId")({
 const cohortFilters: Cohort[] = ["Star", "High Performer", "Rising", "Bedrock", "New Joiner", "Watch Exit", "Watch Rate Revision", "Watch General", "Rescue/PIP"];
 
 function ClientDetail() {
-  const { client } = Route.useLoaderData();
+  const { client } = Route.useLoaderData() as { client: Client };
   const [q, setQ] = useState("");
   const [cohort, setCohort] = useState<Cohort | null>(null);
 

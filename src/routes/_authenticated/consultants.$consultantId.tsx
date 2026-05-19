@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { consultants, clients, signals, tickets, sentEmails, cohortBadgeStyles, riskBadgeStyles, fmtINR } from "@/lib/mockData";
+import { consultants, clients, signals, tickets, sentEmails, cohortBadgeStyles, riskBadgeStyles, fmtINR, type Consultant } from "@/lib/mockData";
 import { ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/consultants/$consultantId"
 });
 
 function ConsultantProfile() {
-  const { c } = Route.useLoaderData();
+  const { c } = Route.useLoaderData() as { c: Consultant };
   const client = clients.find(cl => cl.id === c.clientId);
   const mySignals = signals.filter(s => s.consultantId === c.id);
   const myTickets = tickets.filter(t => t.consultantId === c.id);
