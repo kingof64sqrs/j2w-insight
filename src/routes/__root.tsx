@@ -43,10 +43,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "J2W HRBP Console" },
+      { title: "J2W's HRBP System" },
       { name: "description", content: "Internal HRBP operations platform for consultant lifecycle management." },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "icon", href: "/J2W_Logo.png" },
+      { rel: "stylesheet", href: appCss }
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

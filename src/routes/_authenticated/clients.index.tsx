@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { clients, consultants, fmtINR } from "@/lib/mockData";
 import { Search } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/clients")({ component: ClientsPage });
+export const Route = createFileRoute("/_authenticated/clients/")({ component: ClientsPage });
 
 const healthStyle: Record<string, string> = {
   Green: "bg-emerald-100 text-emerald-800 border-emerald-200",

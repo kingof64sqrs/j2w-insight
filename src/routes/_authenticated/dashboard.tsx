@@ -5,16 +5,14 @@ import { PageHeader } from "@/components/PageHeader";
 import { NewTicketDialog } from "@/components/NewTicketDialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { TicketKanbanBoard } from "@/components/TicketKanbanBoard";
 import {
   Users, Building2, AlertTriangle, CheckCircle2, LifeBuoy, Star,
   Eye, UserPlus, TrendingUp, FileClock, BarChart3, ShieldCheck, Clock,
 } from "lucide-react";
 import {
-  kpis, tickets, consultants, actionQueue, fmtINR, riskBadgeStyles, findConsultant,
+  kpis, tickets, actionQueue, fmtINR, riskBadgeStyles, findConsultant,
 } from "@/lib/mockData";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -35,14 +33,6 @@ const kpiDefs = [
   { key: "npsResponsePct", label: "NPS Response %", icon: BarChart3, value: `${kpis.npsResponsePct}%`, trend: "target 85%" },
   { key: "revenueProtected", label: "Revenue Protected", icon: ShieldCheck, value: fmtINR(kpis.revenueProtected), trend: "FYTD", accent: "text-emerald-600" },
 ];
-
-const statusStyles: Record<string, string> = {
-  "Open": "bg-blue-100 text-blue-800 border-blue-200",
-  "In Progress": "bg-indigo-100 text-indigo-800 border-indigo-200",
-  "Awaiting Approval": "bg-amber-100 text-amber-800 border-amber-200",
-  "Resolved": "bg-emerald-100 text-emerald-800 border-emerald-200",
-  "Closed": "bg-slate-100 text-slate-700 border-slate-200",
-};
 
 function Dashboard() {
   const [open, setOpen] = useState(false);
@@ -95,44 +85,14 @@ function Dashboard() {
                 {filter && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setFilter(null)}>Clear</Button>}
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ticket</TableHead>
-                    <TableHead>Consultant</TableHead>
-                    <TableHead>Cohort</TableHead>
-                    <TableHead>SOP</TableHead>
-                    <TableHead>Risk</TableHead>
-                    <TableHead>Current Step</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Deadline</TableHead>
-                    <TableHead className="text-right">Days Open</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.slice(0, 12).map(t => {
-                    const c = findConsultant(t.consultantId);
-                    return (
-                      <TableRow key={t.id} className="cursor-pointer" onClick={() => location.assign(`/tickets/${t.id}`)}>
-                        <TableCell className="font-medium">
-                          <Link to="/tickets/$ticketId" params={{ ticketId: t.id }} className="text-primary hover:underline">{t.id}</Link>
-                        </TableCell>
-                        <TableCell>{c?.name}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-xs">{c?.cohort}</Badge></TableCell>
-                        <TableCell className="text-xs">{t.sopType}</TableCell>
-                        <TableCell><Badge variant="outline" className={riskBadgeStyles[t.riskLevel]}>{t.riskLevel}</Badge></TableCell>
-                        <TableCell className="text-xs">{t.currentStep}</TableCell>
-                        <TableCell className="text-xs">{t.owner}</TableCell>
-                        <TableCell className="text-xs">{t.deadline}</TableCell>
-                        <TableCell className="text-right text-xs">{t.daysOpen}d</TableCell>
-                        <TableCell><Badge variant="outline" className={statusStyles[t.status]}>{t.status}</Badge></TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            <div className="p-4 bg-muted/20">
+              {filtered.length === 0 ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  No incidents match the selected filter.
+                </p>
+              ) : (
+                <TicketKanbanBoard tickets={filtered} compact />
+              )}
             </div>
           </Card>
 

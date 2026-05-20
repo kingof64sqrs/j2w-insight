@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -98,6 +99,7 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: "Lato", sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }

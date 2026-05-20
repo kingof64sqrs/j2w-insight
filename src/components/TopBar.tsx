@@ -1,6 +1,6 @@
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Search, Bell, FileText, Plus } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -14,7 +14,7 @@ export function TopBar({ onNewTicket }: { onNewTicket?: () => void }) {
   const unread = notifications.filter(n => !n.read).length;
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card/80 backdrop-blur px-4">
-      <SidebarTrigger />
+      <SidebarTrigger className="shrink-0 md:hidden" />
       <div className="relative max-w-md flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input placeholder="Search consultants, clients, tickets..." className="pl-9 h-9 bg-background" />

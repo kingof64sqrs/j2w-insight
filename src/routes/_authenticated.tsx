@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -14,7 +15,14 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthLayout() {
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "16rem",
+          "--sidebar-width-icon": "5rem",
+        } as CSSProperties
+      }
+    >
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <SidebarInset className="flex-1 min-w-0">

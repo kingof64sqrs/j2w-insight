@@ -12,11 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedTicketsRouteImport } from './routes/_authenticated/tickets'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCommunicationRouteImport } from './routes/_authenticated/communication'
-import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
+import { Route as AuthenticatedTicketsIndexRouteImport } from './routes/_authenticated/tickets.index'
+import { Route as AuthenticatedClientsIndexRouteImport } from './routes/_authenticated/clients.index'
 import { Route as AuthenticatedTicketsTicketIdRouteImport } from './routes/_authenticated/tickets.$ticketId'
 import { Route as AuthenticatedConsultantsConsultantIdRouteImport } from './routes/_authenticated/consultants.$consultantId'
 import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
@@ -35,11 +35,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedTicketsRoute = AuthenticatedTicketsRouteImport.update({
-  id: '/tickets',
-  path: '/tickets',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedNotificationsRoute =
   AuthenticatedNotificationsRouteImport.update({
     id: '/notifications',
@@ -57,16 +52,23 @@ const AuthenticatedCommunicationRoute =
     path: '/communication',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedClientsRoute = AuthenticatedClientsRouteImport.update({
-  id: '/clients',
-  path: '/clients',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
+const AuthenticatedTicketsIndexRoute =
+  AuthenticatedTicketsIndexRouteImport.update({
+    id: '/tickets/',
+    path: '/tickets/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedClientsIndexRoute =
+  AuthenticatedClientsIndexRouteImport.update({
+    id: '/clients/',
+    path: '/clients/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedTicketsTicketIdRoute =
   AuthenticatedTicketsTicketIdRouteImport.update({
-    id: '/$ticketId',
-    path: '/$ticketId',
-    getParentRoute: () => AuthenticatedTicketsRoute,
+    id: '/tickets/$ticketId',
+    path: '/tickets/$ticketId',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedConsultantsConsultantIdRoute =
   AuthenticatedConsultantsConsultantIdRouteImport.update({
@@ -76,87 +78,87 @@ const AuthenticatedConsultantsConsultantIdRoute =
   } as any)
 const AuthenticatedClientsClientIdRoute =
   AuthenticatedClientsClientIdRouteImport.update({
-    id: '/$clientId',
-    path: '/$clientId',
-    getParentRoute: () => AuthenticatedClientsRoute,
+    id: '/clients/$clientId',
+    path: '/clients/$clientId',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/communication': typeof AuthenticatedCommunicationRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
-  '/tickets': typeof AuthenticatedTicketsRouteWithChildren
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/consultants/$consultantId': typeof AuthenticatedConsultantsConsultantIdRoute
   '/tickets/$ticketId': typeof AuthenticatedTicketsTicketIdRoute
+  '/clients/': typeof AuthenticatedClientsIndexRoute
+  '/tickets/': typeof AuthenticatedTicketsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/clients': typeof AuthenticatedClientsRouteWithChildren
   '/communication': typeof AuthenticatedCommunicationRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
-  '/tickets': typeof AuthenticatedTicketsRouteWithChildren
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/consultants/$consultantId': typeof AuthenticatedConsultantsConsultantIdRoute
   '/tickets/$ticketId': typeof AuthenticatedTicketsTicketIdRoute
+  '/clients': typeof AuthenticatedClientsIndexRoute
+  '/tickets': typeof AuthenticatedTicketsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/_authenticated/clients': typeof AuthenticatedClientsRouteWithChildren
   '/_authenticated/communication': typeof AuthenticatedCommunicationRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
-  '/_authenticated/tickets': typeof AuthenticatedTicketsRouteWithChildren
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
   '/_authenticated/consultants/$consultantId': typeof AuthenticatedConsultantsConsultantIdRoute
   '/_authenticated/tickets/$ticketId': typeof AuthenticatedTicketsTicketIdRoute
+  '/_authenticated/clients/': typeof AuthenticatedClientsIndexRoute
+  '/_authenticated/tickets/': typeof AuthenticatedTicketsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/login'
-    | '/clients'
     | '/communication'
     | '/dashboard'
     | '/notifications'
-    | '/tickets'
     | '/clients/$clientId'
     | '/consultants/$consultantId'
     | '/tickets/$ticketId'
+    | '/clients/'
+    | '/tickets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
-    | '/clients'
     | '/communication'
     | '/dashboard'
     | '/notifications'
-    | '/tickets'
     | '/clients/$clientId'
     | '/consultants/$consultantId'
     | '/tickets/$ticketId'
+    | '/clients'
+    | '/tickets'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
-    | '/_authenticated/clients'
     | '/_authenticated/communication'
     | '/_authenticated/dashboard'
     | '/_authenticated/notifications'
-    | '/_authenticated/tickets'
     | '/_authenticated/clients/$clientId'
     | '/_authenticated/consultants/$consultantId'
     | '/_authenticated/tickets/$ticketId'
+    | '/_authenticated/clients/'
+    | '/_authenticated/tickets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -188,13 +190,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/tickets': {
-      id: '/_authenticated/tickets'
-      path: '/tickets'
-      fullPath: '/tickets'
-      preLoaderRoute: typeof AuthenticatedTicketsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/notifications': {
       id: '/_authenticated/notifications'
       path: '/notifications'
@@ -216,19 +211,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCommunicationRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/clients': {
-      id: '/_authenticated/clients'
+    '/_authenticated/tickets/': {
+      id: '/_authenticated/tickets/'
+      path: '/tickets'
+      fullPath: '/tickets/'
+      preLoaderRoute: typeof AuthenticatedTicketsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/clients/': {
+      id: '/_authenticated/clients/'
       path: '/clients'
-      fullPath: '/clients'
-      preLoaderRoute: typeof AuthenticatedClientsRouteImport
+      fullPath: '/clients/'
+      preLoaderRoute: typeof AuthenticatedClientsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/tickets/$ticketId': {
       id: '/_authenticated/tickets/$ticketId'
-      path: '/$ticketId'
+      path: '/tickets/$ticketId'
       fullPath: '/tickets/$ticketId'
       preLoaderRoute: typeof AuthenticatedTicketsTicketIdRouteImport
-      parentRoute: typeof AuthenticatedTicketsRoute
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/consultants/$consultantId': {
       id: '/_authenticated/consultants/$consultantId'
@@ -239,53 +241,35 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/clients/$clientId': {
       id: '/_authenticated/clients/$clientId'
-      path: '/$clientId'
+      path: '/clients/$clientId'
       fullPath: '/clients/$clientId'
       preLoaderRoute: typeof AuthenticatedClientsClientIdRouteImport
-      parentRoute: typeof AuthenticatedClientsRoute
+      parentRoute: typeof AuthenticatedRoute
     }
   }
 }
 
-interface AuthenticatedClientsRouteChildren {
-  AuthenticatedClientsClientIdRoute: typeof AuthenticatedClientsClientIdRoute
-}
-
-const AuthenticatedClientsRouteChildren: AuthenticatedClientsRouteChildren = {
-  AuthenticatedClientsClientIdRoute: AuthenticatedClientsClientIdRoute,
-}
-
-const AuthenticatedClientsRouteWithChildren =
-  AuthenticatedClientsRoute._addFileChildren(AuthenticatedClientsRouteChildren)
-
-interface AuthenticatedTicketsRouteChildren {
-  AuthenticatedTicketsTicketIdRoute: typeof AuthenticatedTicketsTicketIdRoute
-}
-
-const AuthenticatedTicketsRouteChildren: AuthenticatedTicketsRouteChildren = {
-  AuthenticatedTicketsTicketIdRoute: AuthenticatedTicketsTicketIdRoute,
-}
-
-const AuthenticatedTicketsRouteWithChildren =
-  AuthenticatedTicketsRoute._addFileChildren(AuthenticatedTicketsRouteChildren)
-
 interface AuthenticatedRouteChildren {
-  AuthenticatedClientsRoute: typeof AuthenticatedClientsRouteWithChildren
   AuthenticatedCommunicationRoute: typeof AuthenticatedCommunicationRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
-  AuthenticatedTicketsRoute: typeof AuthenticatedTicketsRouteWithChildren
+  AuthenticatedClientsClientIdRoute: typeof AuthenticatedClientsClientIdRoute
   AuthenticatedConsultantsConsultantIdRoute: typeof AuthenticatedConsultantsConsultantIdRoute
+  AuthenticatedTicketsTicketIdRoute: typeof AuthenticatedTicketsTicketIdRoute
+  AuthenticatedClientsIndexRoute: typeof AuthenticatedClientsIndexRoute
+  AuthenticatedTicketsIndexRoute: typeof AuthenticatedTicketsIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedClientsRoute: AuthenticatedClientsRouteWithChildren,
   AuthenticatedCommunicationRoute: AuthenticatedCommunicationRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
-  AuthenticatedTicketsRoute: AuthenticatedTicketsRouteWithChildren,
+  AuthenticatedClientsClientIdRoute: AuthenticatedClientsClientIdRoute,
   AuthenticatedConsultantsConsultantIdRoute:
     AuthenticatedConsultantsConsultantIdRoute,
+  AuthenticatedTicketsTicketIdRoute: AuthenticatedTicketsTicketIdRoute,
+  AuthenticatedClientsIndexRoute: AuthenticatedClientsIndexRoute,
+  AuthenticatedTicketsIndexRoute: AuthenticatedTicketsIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -300,3 +284,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
