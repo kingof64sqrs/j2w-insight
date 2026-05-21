@@ -316,6 +316,40 @@ function RcaSelect({
   );
 }
 
+function ConsultantInitialsBadge({
+  name,
+  className = "",
+}: {
+  name: string;
+  className?: string;
+}) {
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={`rounded-full bg-white flex items-center justify-center font-bold shrink-0 cursor-default ${className}`}
+          aria-label={name}
+        >
+          {initials}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="bg-slate-900 text-white px-2.5 py-1.5 rounded shadow-md border border-slate-800"
+      >
+        <p className="font-semibold text-xs">{name}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function CadenceHistoryTimeline({
   entries,
   loading,
@@ -1141,9 +1175,10 @@ function CadenceSchedulerPage() {
                     <CardContent className="p-4 space-y-4">
                       {/* Item Header */}
                       <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-full bg-white border-2 border-sky-200 flex items-center justify-center text-xs font-bold text-sky-700 shrink-0">
-                          {getInitials(c.consultant)}
-                        </div>
+                        <ConsultantInitialsBadge
+                          name={c.consultant}
+                          className="h-10 w-10 border-2 border-sky-200 text-xs text-sky-700"
+                        />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-bold text-slate-800 truncate">
                             {c.client} /{" "}
@@ -1250,9 +1285,10 @@ function CadenceSchedulerPage() {
                     <CardContent className="p-4 space-y-4">
                       {/* Item Header */}
                       <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-full bg-white border-2 border-amber-200 flex items-center justify-center text-xs font-bold text-amber-800 shrink-0">
-                          {getInitials(c.consultant)}
-                        </div>
+                        <ConsultantInitialsBadge
+                          name={c.consultant}
+                          className="h-10 w-10 border-2 border-amber-200 text-xs text-amber-800"
+                        />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-bold text-slate-800 truncate">
                             {c.client} /{" "}
@@ -1353,9 +1389,10 @@ function CadenceSchedulerPage() {
                       {/* Header */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-full bg-white border-2 border-emerald-200 flex items-center justify-center text-[10px] font-bold text-emerald-700 shrink-0">
-                            {getInitials(c.consultant)}
-                          </div>
+                          <ConsultantInitialsBadge
+                            name={c.consultant}
+                            className="h-8 w-8 border-2 border-emerald-200 text-[10px] text-emerald-700"
+                          />
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-slate-800 truncate">
                               {c.client} /{" "}
