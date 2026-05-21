@@ -25,6 +25,8 @@ import {
   HelpCircle,
   Undo2,
   Lock,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "@/lib/auth";
@@ -1089,7 +1091,7 @@ function CadenceSchedulerPage() {
         subtitle="Manage recurring client check-ins, record RAG health, and log RCA statuses."
       />
 
-      <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-8">
+      <main className="flex-1 p-6 md:p-8 space-y-8">
         {/* Navigation & Header Panel */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <Button
@@ -1114,43 +1116,34 @@ function CadenceSchedulerPage() {
         </div>
 
         {/* Counter Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
-          <div className="bg-white border border-slate-200 border-l-4 border-l-amber-500 rounded-xl px-5 py-4 flex items-center gap-4">
-            <div className="flex flex-col">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Pending
-              </span>
-              <span className="text-3xl font-black text-slate-900 tabular-nums leading-none mt-1">
-                {pendingCount}
-              </span>
-            </div>
-            <span className="ml-auto h-10 w-10 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center">
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-            </span>
-          </div>
-          <div className="bg-white border border-slate-200 border-l-4 border-l-emerald-500 rounded-xl px-5 py-4 flex items-center gap-4">
-            <div className="flex flex-col">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Completed
-              </span>
-              <span className="text-3xl font-black text-slate-900 tabular-nums leading-none mt-1">
-                {completedCount}
-              </span>
-            </div>
-            <span className="ml-auto h-10 w-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            </span>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+              </div>
+              <div className="text-2xl font-semibold">{pendingCount}</div>
+              <div className="text-xs text-muted-foreground mt-1">Pending</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              </div>
+              <div className="text-2xl font-semibold">{completedCount}</div>
+              <div className="text-xs text-muted-foreground mt-1">Completed</div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Three-Column Kanban Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Kanban Section */}
+        <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 min-h-[520px] mb-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {/* TODAY Column */}
-          <div className="bg-white border border-slate-200 border-t-[3px] border-t-sky-500 rounded-xl p-4 flex flex-col min-h-[500px] shadow-sm">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 capitalize">
-                <span className="h-2 w-2 rounded-full bg-sky-500" /> Today
-              </h3>
+          <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
+            <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-sky-50/80">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500" />
+              <h3 className="text-sm font-semibold text-slate-900 flex-1">Today</h3>
               <Button
                 size="icon"
                 variant="ghost"
@@ -1164,15 +1157,14 @@ function CadenceSchedulerPage() {
               </Button>
             </div>
 
-            <div className="flex-1 space-y-4 overflow-y-auto max-h-[500px] pr-1">
+            <div className="flex flex-1 flex-col gap-2 p-2 overflow-y-auto max-h-[500px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {cadences
                 .filter((c) => c.date === TODAY_DATE_STR && c.status !== "completed")
                 .map((c) => (
-                  <Card
+                  <div
                     key={c.id}
-                    className="bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all"
+                    className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-sky-500/30 hover:shadow-md space-y-3"
                   >
-                    <CardContent className="p-4 space-y-4">
                       {/* Item Header */}
                       <div className="flex items-start gap-3">
                         <ConsultantInitialsBadge
@@ -1231,7 +1223,7 @@ function CadenceSchedulerPage() {
                         </div>
                       </div>
 
-                      {(c.scheduleId || c.history.length > 0) && (
+                      {c.scheduleId != null && (
                         <div className="pt-2 border-t border-slate-100">
                           <button
                             onClick={() => handleToggleCardHistory(c)}
@@ -1249,8 +1241,7 @@ function CadenceSchedulerPage() {
                           )}
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
+                  </div>
                 ))}
               {cadences.filter((c) => c.date === TODAY_DATE_STR && c.status !== "completed")
                 .length === 0 && (
@@ -1263,26 +1254,23 @@ function CadenceSchedulerPage() {
           </div>
 
           {/* PENDING Column */}
-          <div className="bg-white border border-slate-200 border-t-[3px] border-t-amber-500 rounded-xl p-4 flex flex-col min-h-[500px] shadow-sm">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 capitalize">
-                <span className="h-2 w-2 rounded-full bg-amber-500" /> Pending Catch-ups
-              </h3>
-              <span className="text-[11px] font-bold text-slate-600 bg-white border border-slate-200 px-2.5 py-0.5 rounded-full">
-                {cadences.filter((c) => c.date !== TODAY_DATE_STR && c.status !== "completed").length}{" "}
-                items
+          <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
+            <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-amber-50/80">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+              <h3 className="text-sm font-semibold text-slate-900 flex-1">Pending Catch-ups</h3>
+              <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/80 px-1.5 text-xs font-medium text-slate-500">
+                {cadences.filter((c) => c.date !== TODAY_DATE_STR && c.status !== "completed").length}
               </span>
             </div>
 
-            <div className="flex-1 space-y-4 overflow-y-auto max-h-[500px] pr-1">
+            <div className="flex flex-1 flex-col gap-2 p-2 overflow-y-auto max-h-[500px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {cadences
                 .filter((c) => c.date !== TODAY_DATE_STR && c.status !== "completed")
                 .map((c) => (
-                  <Card
+                  <div
                     key={c.id}
-                    className="bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all"
+                    className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-amber-500/30 hover:shadow-md space-y-3"
                   >
-                    <CardContent className="p-4 space-y-4">
                       {/* Item Header */}
                       <div className="flex items-start gap-3">
                         <ConsultantInitialsBadge
@@ -1342,7 +1330,7 @@ function CadenceSchedulerPage() {
                         </div>
                       </div>
 
-                      {(c.scheduleId || c.history.length > 0) && (
+                      {c.scheduleId != null && (
                         <div className="pt-2 border-t border-slate-100">
                           <button
                             onClick={() => handleToggleCardHistory(c)}
@@ -1360,32 +1348,29 @@ function CadenceSchedulerPage() {
                           )}
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
+                  </div>
                 ))}
             </div>
           </div>
 
           {/* COMPLETED Column */}
-          <div className="bg-white border border-slate-200 border-t-[3px] border-t-emerald-500 rounded-xl p-4 flex flex-col min-h-[500px] shadow-sm">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 capitalize">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Completed
-              </h3>
-              <span className="text-[11px] font-bold text-emerald-700 bg-white border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                {cadences.filter((c) => c.status === "completed").length} resolved
+          <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
+            <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-emerald-50/80">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+              <h3 className="text-sm font-semibold text-slate-900 flex-1">Completed</h3>
+              <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/80 px-1.5 text-xs font-medium text-slate-500">
+                {cadences.filter((c) => c.status === "completed").length}
               </span>
             </div>
 
-            <div className="flex-1 space-y-4 overflow-y-auto max-h-[500px] pr-1">
+            <div className="flex flex-1 flex-col gap-2 p-2 overflow-y-auto max-h-[500px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {cadences
                 .filter((c) => c.status === "completed")
                 .map((c) => (
-                  <Card
+                  <div
                     key={c.id}
-                    className="bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all"
+                    className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-emerald-500/30 hover:shadow-md space-y-3"
                   >
-                    <CardContent className="p-4 space-y-3">
                       {/* Header */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-3">
@@ -1430,7 +1415,7 @@ function CadenceSchedulerPage() {
                         />
                       </div>
 
-                      {(c.scheduleId || c.history.length > 0) && (
+                      {c.scheduleId != null && (
                         <div className="pt-2 border-t border-slate-100">
                           <button
                             onClick={() => handleToggleCardHistory(c)}
@@ -1448,8 +1433,7 @@ function CadenceSchedulerPage() {
                           )}
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
+                  </div>
                 ))}
             </div>
           </div>

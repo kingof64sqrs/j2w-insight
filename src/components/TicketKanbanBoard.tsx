@@ -177,7 +177,7 @@ export function TicketKanbanBoard({
   return (
     <div
       className={cn(
-        "flex gap-4 overflow-x-auto pb-2 -mx-1 px-1",
+        "flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         compact ? "min-h-[420px]" : "min-h-[520px]",
       )}
     >
@@ -186,7 +186,7 @@ export function TicketKanbanBoard({
         return (
           <div
             key={col.status}
-            className="flex w-[280px] shrink-0 flex-col rounded-xl border border-border/60 bg-muted/30"
+            className="flex flex-1 min-w-[280px] flex-col rounded-xl border border-border/60 bg-muted/30"
           >
             <div
               className={cn(
@@ -203,7 +203,7 @@ export function TicketKanbanBoard({
 
             <div
               className={cn(
-                "flex flex-1 flex-col gap-2 overflow-y-auto p-2",
+                "flex flex-1 flex-col gap-2 overflow-y-auto p-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
                 compact ? "max-h-[480px]" : "max-h-[calc(100vh-320px)]",
               )}
             >
