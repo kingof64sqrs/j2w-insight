@@ -55,6 +55,9 @@ export interface ClientItem {
   hrbp_id: number;
   is_active: boolean;
   bh_id?: number;
+  bh_name?: string;
+  headcount?: number;
+  total_monthly_po?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -180,6 +183,16 @@ export interface CadenceSessionsResponse {
     total_pages?: number;
   };
   data: CadenceSessionItem[];
+}
+
+export interface ExportCadenceSessionsResponse {
+  meta: {
+    status: boolean;
+    message: string;
+  };
+  data: {
+    url: string;
+  };
 }
 
 export interface CadenceSessionSummaryData {

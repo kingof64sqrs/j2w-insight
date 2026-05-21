@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
+import { Route as AuthenticatedIncidentEngineRouteImport } from './routes/_authenticated/incident-engine'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCommunicationRouteImport } from './routes/_authenticated/communication'
 import { Route as AuthenticatedCadenceRouteImport } from './routes/_authenticated/cadence'
@@ -46,6 +47,12 @@ const AuthenticatedNotificationsRoute =
   AuthenticatedNotificationsRouteImport.update({
     id: '/notifications',
     path: '/notifications',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedIncidentEngineRoute =
+  AuthenticatedIncidentEngineRouteImport.update({
+    id: '/incident-engine',
+    path: '/incident-engine',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -101,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/cadence': typeof AuthenticatedCadenceRoute
   '/communication': typeof AuthenticatedCommunicationRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/incident-engine': typeof AuthenticatedIncidentEngineRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -115,6 +123,7 @@ export interface FileRoutesByTo {
   '/cadence': typeof AuthenticatedCadenceRoute
   '/communication': typeof AuthenticatedCommunicationRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/incident-engine': typeof AuthenticatedIncidentEngineRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -131,6 +140,7 @@ export interface FileRoutesById {
   '/_authenticated/cadence': typeof AuthenticatedCadenceRoute
   '/_authenticated/communication': typeof AuthenticatedCommunicationRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/incident-engine': typeof AuthenticatedIncidentEngineRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRoute
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/cadence'
     | '/communication'
     | '/dashboard'
+    | '/incident-engine'
     | '/notifications'
     | '/profile'
     | '/clients/$clientId'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/cadence'
     | '/communication'
     | '/dashboard'
+    | '/incident-engine'
     | '/notifications'
     | '/profile'
     | '/clients/$clientId'
@@ -176,6 +188,7 @@ export interface FileRouteTypes {
     | '/_authenticated/cadence'
     | '/_authenticated/communication'
     | '/_authenticated/dashboard'
+    | '/_authenticated/incident-engine'
     | '/_authenticated/notifications'
     | '/_authenticated/profile'
     | '/_authenticated/clients/$clientId'
@@ -226,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/incident-engine': {
+      id: '/_authenticated/incident-engine'
+      path: '/incident-engine'
+      fullPath: '/incident-engine'
+      preLoaderRoute: typeof AuthenticatedIncidentEngineRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard': {
@@ -291,6 +311,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCadenceRoute: typeof AuthenticatedCadenceRoute
   AuthenticatedCommunicationRoute: typeof AuthenticatedCommunicationRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedIncidentEngineRoute: typeof AuthenticatedIncidentEngineRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedClientsClientIdRoute: typeof AuthenticatedClientsClientIdRoute
@@ -304,6 +325,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCadenceRoute: AuthenticatedCadenceRoute,
   AuthenticatedCommunicationRoute: AuthenticatedCommunicationRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedIncidentEngineRoute: AuthenticatedIncidentEngineRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedClientsClientIdRoute: AuthenticatedClientsClientIdRoute,

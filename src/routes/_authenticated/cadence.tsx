@@ -38,6 +38,7 @@ import {
   getCadenceSessionsSummaryApi,
   updateCadenceSessionApi,
   getCadenceScheduleSessionsApi,
+  exportCadenceSessionsApi,
 } from "@/apiService/api";
 import {
   CADENCE_FREQUENCY_OPTIONS,
@@ -47,6 +48,10 @@ import {
   type ConsultantItem,
 } from "@/apiService/types";
 import React from "react";
+import { CustomTablePagination } from "@/components/CustomPagination";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CustomDateRangePicker } from "@/components/CustomDateRangePicker";
+import dayjs, { Dayjs } from "dayjs";
 
 export const Route = createFileRoute("/_authenticated/cadence")({
   component: CadenceSchedulerPage,
@@ -242,8 +247,6 @@ const getMonthDateRange = (year: number, month: number) => {
   };
 };
 
-const REGISTRY_PAGE_SIZE = 10;
-
 const tableFilterToApiStatus = (
   filter: "all" | "pending" | "completed",
 ): string | undefined => {
@@ -310,7 +313,7 @@ function RcaSelect({
       onChange={(e) => onChange(e.target.value as RcaValue)}
       className={`bg-white border border-slate-200 rounded-md px-2 py-1.5 text-[10px] font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 ${className}`}
     >
-      <option value="">Select RCA</option>
+      <option value="">Select RAG</option>
       <option value="green">Green</option>
       <option value="amber">Amber</option>
       <option value="red">Red</option>
@@ -376,13 +379,12 @@ function CadenceHistoryTimeline({
               {formatHistoryDate(h.date)}
             </span>
             <span
-              className={`absolute -left-1.5 top-1 h-3 w-3 rounded-full border-2 border-white ${
-                h.rag === "Green"
-                  ? "bg-emerald-500"
-                  : h.rag === "Amber"
-                    ? "bg-amber-500"
-                    : "bg-red-500"
-              }`}
+              className={`absolute -left-1.5 top-1 h-3 w-3 rounded-full border-2 border-white ${h.rag === "Green"
+                ? "bg-emerald-500"
+                : h.rag === "Amber"
+                  ? "bg-amber-500"
+                  : "bg-red-500"
+                }`}
             />
             <p className="pl-6 text-[11px] text-slate-500 italic">{h.comment}</p>
           </div>
@@ -481,9 +483,11 @@ function CadenceSchedulerPage() {
   // Cadence Registry (tabular listing)
   const [registrySessions, setRegistrySessions] = useState<CadenceSessionItem[]>([]);
   const [registryPage, setRegistryPage] = useState(1);
+  const [registryPerPage, setRegistryPerPage] = useState(10);
   const [registryTotal, setRegistryTotal] = useState(0);
   const [registryTotalPages, setRegistryTotalPages] = useState(1);
   const [loadingRegistry, setLoadingRegistry] = useState(false);
+  const [registryDateRange, setRegistryDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
 
   // Edit/Checkin temp states
   const [checkInComments, setCheckInComments] = useState<Record<string, string>>({});
@@ -496,6 +500,7 @@ function CadenceSchedulerPage() {
   const [registryExpandedRowId, setRegistryExpandedRowId] = useState<number | null>(null);
   const [registryHistorySessions, setRegistryHistorySessions] = useState<CadenceSessionItem[]>([]);
   const [loadingRegistryHistory, setLoadingRegistryHistory] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const getResolvedHrbpId = useCallback((): number => {
     const storedId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
@@ -521,7 +526,7 @@ function CadenceSchedulerPage() {
       const resolvedId = user?.id || (storedId ? Number(storedId) : 1);
       setLoadingClients(true);
       try {
-        const res = await getClientsApi(resolvedId);
+        const res = await getClientsApi({ hrbp_id: resolvedId, per_page: -1 });
         if (res.meta.status && res.data) {
           setApiClients(res.data);
           if (res.data.length > 0) {
@@ -549,7 +554,7 @@ function CadenceSchedulerPage() {
       const resolvedId = user?.id || (storedId ? Number(storedId) : 1);
       setLoadingConsultants(true);
       try {
-        const res = await getConsultantsApi(resolvedId, Number(modalClientId));
+        const res = await getConsultantsApi({ hrbp_id: resolvedId, client_id: Number(modalClientId) });
         if (res.meta.status && res.data) {
           setApiConsultants(res.data);
           if (res.data.length > 0) {
@@ -675,7 +680,17 @@ function CadenceSchedulerPage() {
     const fetchRegistrySessions = async () => {
       const storedId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
       const resolvedId = user?.id || (storedId ? Number(storedId) : 1);
-      const { dateFrom, dateTo } = getMonthDateRange(currentYear, currentMonth);
+
+      let dateFrom, dateTo;
+      if (registryDateRange[0] && registryDateRange[1]) {
+        dateFrom = registryDateRange[0].format("YYYY-MM-DD");
+        dateTo = registryDateRange[1].format("YYYY-MM-DD");
+      } else {
+        const monthRange = getMonthDateRange(currentYear, currentMonth);
+        dateFrom = monthRange.dateFrom;
+        dateTo = monthRange.dateTo;
+      }
+
       const statusParam = tableFilterToApiStatus(tableFilter);
 
       setLoadingRegistry(true);
@@ -683,7 +698,7 @@ function CadenceSchedulerPage() {
         const res = await getCadenceSessionsApi({
           hrbp_id: resolvedId,
           page_no: registryPage,
-          per_page: REGISTRY_PAGE_SIZE,
+          per_page: registryPerPage,
           date_from: dateFrom,
           date_to: dateTo,
           ...(statusParam ? { status: statusParam } : {}),
@@ -709,7 +724,7 @@ function CadenceSchedulerPage() {
     };
 
     fetchRegistrySessions();
-  }, [user?.id, currentYear, currentMonth, tableFilter, registryPage]);
+  }, [user?.id, currentYear, currentMonth, tableFilter, registryPage, registryPerPage, registryDateRange]);
 
   // Stats
   const pendingCount = useMemo(
@@ -900,11 +915,11 @@ function CadenceSchedulerPage() {
             .then((res) => {
               if (res.meta.status && res.data) setTimelineSessions(res.data);
             })
-            .catch(() => {});
+            .catch(() => { });
           getCadenceSessionsApi({
             hrbp_id: resolvedId,
             page_no: registryPage,
-            per_page: REGISTRY_PAGE_SIZE,
+            per_page: registryPerPage,
             date_from: dateFrom,
             date_to: dateTo,
             ...(statusParam ? { status: statusParam } : {}),
@@ -916,7 +931,7 @@ function CadenceSchedulerPage() {
                 setRegistryTotalPages(res.meta.total_pages ?? 1);
               }
             })
-            .catch(() => {});
+            .catch(() => { });
         }
 
         setShowCreateModal(false);
@@ -1009,7 +1024,7 @@ function CadenceSchedulerPage() {
       }),
     );
     await refreshCadenceSummary();
-    toast.success("RCA status updated");
+    toast.success("RAG status updated");
   };
 
   const handleToggleCardHistory = async (cadence: Cadence) => {
@@ -1050,9 +1065,44 @@ function CadenceSchedulerPage() {
     );
   }, [registrySessions, searchTerm]);
 
-  // Export excel simulation
-  const handleExportExcel = () => {
-    toast.success("Excel sheet generated and download triggered successfully!");
+  // Export excel
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true);
+      const storedId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+      const resolvedId = user?.id || (storedId ? Number(storedId) : 1);
+
+      let dateFrom, dateTo;
+      if (registryDateRange[0] && registryDateRange[1]) {
+        dateFrom = registryDateRange[0].format("YYYY-MM-DD");
+        dateTo = registryDateRange[1].format("YYYY-MM-DD");
+      } else {
+        const monthRange = getMonthDateRange(currentYear, currentMonth);
+        dateFrom = monthRange.dateFrom;
+        dateTo = monthRange.dateTo;
+      }
+
+      const statusParam = tableFilterToApiStatus(tableFilter);
+
+      const res = await exportCadenceSessionsApi({
+        hrbp_id: resolvedId,
+        date_from: dateFrom,
+        date_to: dateTo,
+        ...(statusParam ? { status: statusParam } : {}),
+      });
+
+      if (res.meta.status && res.data?.url) {
+        toast.success(res.meta.message || "Excel exported successfully");
+        // Open the download URL
+        window.open(res.data.url, "_blank");
+      } else {
+        toast.error(res.meta.message || "Failed to export Excel");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to export Excel");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleToggleRegistryRow = async (scheduleId: number, sessionId: number) => {
@@ -1086,85 +1136,77 @@ function CadenceSchedulerPage() {
   return (
     <TooltipProvider>
       <div className="flex flex-col min-h-screen bg-white text-slate-800">
-      <TopBar
-        title="Cadence Scheduler"
-        subtitle="Manage recurring client check-ins, record RAG health, and log RCA statuses."
-      />
+        <TopBar
+          title="Cadence Scheduler"
+          subtitle="Manage recurring client check-ins, record RAG health, and log RAG statuses."
+        />
 
-      <main className="flex-1 p-6 md:p-8 space-y-8">
-        {/* Navigation & Header Panel */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <Button
-            variant="ghost"
-            asChild
-            className="text-slate-600 hover:text-slate-950 hover:bg-slate-100 gap-2 self-start transition-all"
-          >
-            <Link to="/dashboard">
-              <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-            </Link>
-          </Button>
-
-          <Button
-            onClick={() => {
-              setModalDate(TODAY_DATE_STR);
-              setShowCreateModal(true);
-            }}
-            className="bg-sky-600 hover:bg-sky-500 text-white font-semibold gap-1.5 shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Create Cadence
-          </Button>
-        </div>
-
-        {/* Counter Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
-              </div>
-              <div className="text-2xl font-semibold">{pendingCount}</div>
-              <div className="text-xs text-muted-foreground mt-1">Pending</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              </div>
-              <div className="text-2xl font-semibold">{completedCount}</div>
-              <div className="text-xs text-muted-foreground mt-1">Completed</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Kanban Section */}
-        <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 min-h-[520px] mb-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {/* TODAY Column */}
-          <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
-            <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-sky-50/80">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500" />
-              <h3 className="text-sm font-semibold text-slate-900 flex-1">Today</h3>
+        <main className="flex-1 p-6 md:p-8 space-y-6">
+          <div className="space-y-4">
+            {/* Navigation & Header Panel */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-4">
               <Button
-                size="icon"
-                variant="ghost"
                 onClick={() => {
                   setModalDate(TODAY_DATE_STR);
                   setShowCreateModal(true);
                 }}
-                className="h-8 w-8 hover:bg-slate-100 text-slate-500"
+                className="bg-sky-600 hover:bg-sky-500 text-white font-semibold gap-1.5 shadow-sm"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4" /> Create Cadence
               </Button>
             </div>
 
-            <div className="flex flex-1 flex-col gap-2 p-2 overflow-y-auto max-h-[500px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {cadences
-                .filter((c) => c.date === TODAY_DATE_STR && c.status !== "completed")
-                .map((c) => (
-                  <div
-                    key={c.id}
-                    className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-sky-500/30 hover:shadow-md space-y-3"
-                  >
+            {/* Counter Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200/60 shadow-sm transition-all hover:shadow-md">
+                <CardContent className="p-4 relative overflow-hidden">
+                  <div className="absolute top-4 right-4 bg-amber-100 p-1.5 rounded-lg shadow-sm border border-amber-200/50">
+                    <Clock className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div className="text-[10px] font-bold text-amber-700/80 uppercase tracking-wider mb-1">Pending</div>
+                  <div className="text-3xl font-bold text-amber-950">{pendingCount}</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200/60 shadow-sm transition-all hover:shadow-md">
+                <CardContent className="p-4 relative overflow-hidden">
+                  <div className="absolute top-4 right-4 bg-emerald-100 p-1.5 rounded-lg shadow-sm border border-emerald-200/50">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div className="text-[10px] font-bold text-emerald-700/80 uppercase tracking-wider mb-1">Completed</div>
+                  <div className="text-3xl font-bold text-emerald-950">{completedCount}</div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Kanban Section */}
+          <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 min-h-[520px] mb-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {/* TODAY Column */}
+            <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
+              <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-sky-50/80">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500" />
+                <h3 className="text-sm font-semibold text-slate-900 flex-1">Today</h3>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => {
+                    setModalDate(TODAY_DATE_STR);
+                    setShowCreateModal(true);
+                  }}
+                  className="h-8 w-8 hover:bg-slate-100 text-slate-500"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="flex flex-1 flex-col gap-2 p-2 overflow-y-auto max-h-[500px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {cadences
+                  .filter((c) => c.date === TODAY_DATE_STR && c.status !== "completed")
+                  .map((c) => (
+                    <div
+                      key={c.id}
+                      className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-sky-500/30 hover:shadow-md space-y-3"
+                    >
                       {/* Item Header */}
                       <div className="flex items-start gap-3">
                         <ConsultantInitialsBadge
@@ -1176,8 +1218,8 @@ function CadenceSchedulerPage() {
                             {c.client} /{" "}
                             <span className="text-slate-500 font-medium">{c.project}</span>
                           </p>
-                          <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" /> {c.time}
+                          <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-0.5 truncate">
+                            <span className="font-semibold">{c.consultant}</span> &bull; <Clock className="w-3.5 h-3.5 text-slate-400 ml-1" /> {c.time}
                           </p>
                         </div>
                       </div>
@@ -1241,36 +1283,36 @@ function CadenceSchedulerPage() {
                           )}
                         </div>
                       )}
-                  </div>
-                ))}
-              {cadences.filter((c) => c.date === TODAY_DATE_STR && c.status !== "completed")
-                .length === 0 && (
-                <div className="flex flex-col items-center justify-center p-8 text-center text-slate-500 bg-white rounded-lg border border-dashed border-slate-200 min-h-[150px]">
-                  <Check className="w-6 h-6 text-emerald-500 mb-2" />
-                  <p className="text-xs font-semibold text-slate-600">All catch-ups completed today!</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* PENDING Column */}
-          <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
-            <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-amber-50/80">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
-              <h3 className="text-sm font-semibold text-slate-900 flex-1">Pending Catch-ups</h3>
-              <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/80 px-1.5 text-xs font-medium text-slate-500">
-                {cadences.filter((c) => c.date !== TODAY_DATE_STR && c.status !== "completed").length}
-              </span>
+                    </div>
+                  ))}
+                {cadences.filter((c) => c.date === TODAY_DATE_STR && c.status !== "completed")
+                  .length === 0 && (
+                    <div className="flex flex-col items-center justify-center p-8 text-center text-slate-500 bg-white rounded-lg border border-dashed border-slate-200 min-h-[150px]">
+                      <Check className="w-6 h-6 text-emerald-500 mb-2" />
+                      <p className="text-xs font-semibold text-slate-600">All catch-ups completed today!</p>
+                    </div>
+                  )}
+              </div>
             </div>
 
-            <div className="flex flex-1 flex-col gap-2 p-2 overflow-y-auto max-h-[500px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {cadences
-                .filter((c) => c.date !== TODAY_DATE_STR && c.status !== "completed")
-                .map((c) => (
-                  <div
-                    key={c.id}
-                    className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-amber-500/30 hover:shadow-md space-y-3"
-                  >
+            {/* PENDING Column */}
+            <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
+              <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-amber-50/80">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                <h3 className="text-sm font-semibold text-slate-900 flex-1">Pending Catch-ups</h3>
+                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/80 px-1.5 text-xs font-medium text-slate-500">
+                  {cadences.filter((c) => c.date !== TODAY_DATE_STR && c.status !== "completed").length}
+                </span>
+              </div>
+
+              <div className="flex flex-1 flex-col gap-2 p-2 overflow-y-auto max-h-[500px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {cadences
+                  .filter((c) => c.date !== TODAY_DATE_STR && c.status !== "completed")
+                  .map((c) => (
+                    <div
+                      key={c.id}
+                      className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-amber-500/30 hover:shadow-md space-y-3"
+                    >
                       {/* Item Header */}
                       <div className="flex items-start gap-3">
                         <ConsultantInitialsBadge
@@ -1282,9 +1324,8 @@ function CadenceSchedulerPage() {
                             {c.client} /{" "}
                             <span className="text-slate-500 font-medium">{c.project}</span>
                           </p>
-                          <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                            <CalendarIcon className="w-3.5 h-3.5 text-slate-400" /> {c.date} at{" "}
-                            {c.time}
+                          <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-0.5 truncate">
+                            <span className="font-semibold">{c.consultant}</span> &bull; <CalendarIcon className="w-3.5 h-3.5 text-slate-400 ml-1" /> {c.date} at {c.time}
                           </p>
                         </div>
                       </div>
@@ -1348,29 +1389,29 @@ function CadenceSchedulerPage() {
                           )}
                         </div>
                       )}
-                  </div>
-                ))}
-            </div>
-          </div>
-
-          {/* COMPLETED Column */}
-          <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
-            <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-emerald-50/80">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-              <h3 className="text-sm font-semibold text-slate-900 flex-1">Completed</h3>
-              <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/80 px-1.5 text-xs font-medium text-slate-500">
-                {cadences.filter((c) => c.status === "completed").length}
-              </span>
+                    </div>
+                  ))}
+              </div>
             </div>
 
-            <div className="flex flex-1 flex-col gap-2 p-2 overflow-y-auto max-h-[500px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {cadences
-                .filter((c) => c.status === "completed")
-                .map((c) => (
-                  <div
-                    key={c.id}
-                    className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-emerald-500/30 hover:shadow-md space-y-3"
-                  >
+            {/* COMPLETED Column */}
+            <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
+              <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-emerald-50/80">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                <h3 className="text-sm font-semibold text-slate-900 flex-1">Completed</h3>
+                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/80 px-1.5 text-xs font-medium text-slate-500">
+                  {cadences.filter((c) => c.status === "completed").length}
+                </span>
+              </div>
+
+              <div className="flex flex-1 flex-col gap-2 p-2 overflow-y-auto max-h-[500px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {cadences
+                  .filter((c) => c.status === "completed")
+                  .map((c) => (
+                    <div
+                      key={c.id}
+                      className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-emerald-500/30 hover:shadow-md space-y-3"
+                    >
                       {/* Header */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-3">
@@ -1391,13 +1432,12 @@ function CadenceSchedulerPage() {
 
                         {/* RAG Dot */}
                         <div
-                          className={`h-4.5 w-4.5 rounded-full shrink-0 border ${
-                            c.rag === "Green"
-                              ? "bg-emerald-500 border-emerald-600"
-                              : c.rag === "Amber"
-                                ? "bg-amber-500 border-amber-600"
-                                : "bg-red-500 border-red-600"
-                          }`}
+                          className={`h-4.5 w-4.5 rounded-full shrink-0 border ${c.rag === "Green"
+                            ? "bg-emerald-500 border-emerald-600"
+                            : c.rag === "Amber"
+                              ? "bg-amber-500 border-amber-600"
+                              : "bg-red-500 border-red-600"
+                            }`}
                         />
                       </div>
 
@@ -1433,130 +1473,124 @@ function CadenceSchedulerPage() {
                           )}
                         </div>
                       )}
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Calendar Timeline Section */}
-        <Card className="bg-white border border-slate-200 shadow-sm overflow-hidden rounded-xl">
-          <CardContent className="p-6 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 gap-4">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-sky-500" /> Month Timeline
-              </h3>
-              <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={handlePrevMonth}
-                  className="h-7 w-7 text-slate-500 hover:text-slate-800"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <span className="text-xs font-bold text-slate-700 min-w-[100px] text-center">
-                  {monthNames[currentMonth]} {currentYear}
-                </span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={handleNextMonth}
-                  className="h-7 w-7 text-slate-500 hover:text-slate-800"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
+                    </div>
+                  ))}
               </div>
             </div>
+          </div>
 
-            {/* Timeline Horizontal Day Grid — one column per calendar day in the month */}
-            <div className="overflow-x-auto pb-2">
-              {loadingTimeline ? (
-                <div className="flex items-center justify-center py-8 text-sm text-slate-400 font-medium">
-                  Loading timeline…
+          {/* Calendar Timeline Section */}
+          <div className="space-y-6 mt-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 gap-4">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5 text-sky-500" /> Month Timeline
+                </h3>
+                <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={handlePrevMonth}
+                    className="h-7 w-7 text-slate-500 hover:text-slate-800"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-xs font-bold text-slate-700 min-w-[100px] text-center">
+                    {monthNames[currentMonth]} {currentYear}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={handleNextMonth}
+                    className="h-7 w-7 text-slate-500 hover:text-slate-800"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
-              ) : (
-                <div
-                  className="flex divide-x divide-slate-100 border border-slate-200 rounded-xl overflow-hidden"
-                  style={{ minWidth: `${Math.max(daysInMonth * 52, 320)}px` }}
-                >
-                  {Array.from({ length: daysInMonth }, (_, i) => {
-                    const dayNum = i + 1;
-                    const daySessions = timelineByDay[dayNum] || [];
-                    const todayParts = TODAY_DATE_STR.split("-");
-                    const isToday =
-                      currentYear === Number(todayParts[0]) &&
-                      currentMonth === Number(todayParts[1]) - 1 &&
-                      dayNum === Number(todayParts[2]);
+              </div>
 
-                    return (
-                      <div
-                        key={dayNum}
-                        className={`flex-1 min-w-[52px] p-2 text-center flex flex-col items-center justify-between min-h-[140px] transition-colors bg-white ${
-                          isToday ? "ring-2 ring-inset ring-sky-400/60" : "hover:bg-white"
-                        }`}
-                      >
-                        <span
-                          className={`text-xs font-bold tracking-tight px-1.5 py-0.5 rounded-full ${
-                            isToday
+              {/* Timeline Horizontal Day Grid — one column per calendar day in the month */}
+              <div className="overflow-x-auto pb-2">
+                {loadingTimeline ? (
+                  <div className="flex items-center justify-center py-8 text-sm text-slate-400 font-medium">
+                    Loading timeline…
+                  </div>
+                ) : (
+                  <div
+                    className="flex divide-x divide-slate-100 border border-slate-200 rounded-xl overflow-hidden"
+                    style={{ minWidth: `${Math.max(daysInMonth * 52, 320)}px` }}
+                  >
+                    {Array.from({ length: daysInMonth }, (_, i) => {
+                      const dayNum = i + 1;
+                      const daySessions = timelineByDay[dayNum] || [];
+                      const todayParts = TODAY_DATE_STR.split("-");
+                      const isToday =
+                        currentYear === Number(todayParts[0]) &&
+                        currentMonth === Number(todayParts[1]) - 1 &&
+                        dayNum === Number(todayParts[2]);
+
+                      return (
+                        <div
+                          key={dayNum}
+                          className={`flex-1 min-w-[52px] p-2 text-center flex flex-col items-center justify-between min-h-[140px] transition-colors bg-white ${isToday ? "ring-2 ring-inset ring-sky-400/60" : "hover:bg-white"
+                            }`}
+                        >
+                          <span
+                            className={`text-xs font-bold tracking-tight px-1.5 py-0.5 rounded-full ${isToday
                               ? "bg-sky-600 text-white font-extrabold shadow-sm"
                               : "text-slate-400"
-                          }`}
-                        >
-                          {dayNum}
-                        </span>
+                              }`}
+                          >
+                            {dayNum}
+                          </span>
 
-                        <div className="flex flex-col gap-1 w-full mt-2 justify-center items-center">
-                          {daySessions.slice(0, 3).map((session) => {
-                            const consultantName = session.consultant_name || "Unknown";
-                            const isSessionToday = session.scheduled_date === TODAY_DATE_STR;
+                          <div className="flex flex-col gap-1 w-full mt-2 justify-center items-center">
+                            {daySessions.slice(0, 3).map((session) => {
+                              const consultantName = session.consultant_name || "Unknown";
+                              const isSessionToday = session.scheduled_date === TODAY_DATE_STR;
 
-                            return (
-                              <Tooltip key={session.id}>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className={`h-5 w-5 rounded-full border flex items-center justify-center text-[8px] font-black text-white shadow-sm shrink-0 cursor-default ${
-                                      isSessionToday
+                              return (
+                                <Tooltip key={session.id}>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className={`h-5 w-5 rounded-full border flex items-center justify-center text-[8px] font-black text-white shadow-sm shrink-0 cursor-default ${isSessionToday
                                         ? "bg-sky-500 border-sky-600 animate-pulse"
                                         : "bg-amber-500 border-amber-600"
-                                    }`}
-                                    aria-label={consultantName}
+                                        }`}
+                                      aria-label={consultantName}
+                                    >
+                                      {getInitials(consultantName)}
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="top"
+                                    className="bg-slate-900 text-white px-2.5 py-1.5 rounded shadow-md border border-slate-800"
                                   >
-                                    {getInitials(consultantName)}
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent
-                                  side="top"
-                                  className="bg-slate-900 text-white px-2.5 py-1.5 rounded shadow-md border border-slate-800"
-                                >
-                                  <p className="font-semibold text-xs">{consultantName}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            );
-                          })}
-                          {daySessions.length > 3 && (
-                            <span className="text-[9px] font-bold text-slate-400">
-                              +{daySessions.length - 3}
-                            </span>
-                          )}
-                          {daySessions.length === 0 && (
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-200 mt-2" />
-                          )}
+                                    <p className="font-semibold text-xs">{consultantName}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            })}
+                            {daySessions.length > 3 && (
+                              <span className="text-[9px] font-bold text-slate-400">
+                                +{daySessions.length - 3}
+                              </span>
+                            )}
+                            {daySessions.length === 0 && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-slate-200 mt-2" />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+          </div>
 
-        {/* Tabular Column / Grid listing */}
-        <Card className="bg-white border border-slate-200 shadow-sm overflow-hidden rounded-xl">
-          <CardContent className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-100 pb-4 gap-4">
+          {/* Tabular Column / Grid listing */}
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-emerald-500" /> Cadence Registry
               </h3>
@@ -1574,17 +1608,22 @@ function CadenceSchedulerPage() {
                   />
                 </div>
 
+                {/* Date Range Picker */}
+                <CustomDateRangePicker
+                  value={registryDateRange}
+                  onChange={(newValue) => setRegistryDateRange(newValue)}
+                />
+
                 {/* Filters */}
                 <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200">
                   <Button
                     size="sm"
                     variant={tableFilter === "all" ? "secondary" : "ghost"}
                     onClick={() => setTableFilter("all")}
-                    className={`h-7 px-2.5 text-xs font-semibold ${
-                      tableFilter === "all"
-                        ? "bg-white text-slate-800 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800"
-                    }`}
+                    className={`h-7 px-2.5 text-xs font-semibold ${tableFilter === "all"
+                      ? "bg-white text-slate-800 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                      }`}
                   >
                     All
                   </Button>
@@ -1592,11 +1631,10 @@ function CadenceSchedulerPage() {
                     size="sm"
                     variant={tableFilter === "pending" ? "secondary" : "ghost"}
                     onClick={() => setTableFilter("pending")}
-                    className={`h-7 px-2.5 text-xs font-semibold ${
-                      tableFilter === "pending"
-                        ? "bg-white text-slate-800 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800"
-                    }`}
+                    className={`h-7 px-2.5 text-xs font-semibold ${tableFilter === "pending"
+                      ? "bg-white text-slate-800 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                      }`}
                   >
                     Pending
                   </Button>
@@ -1604,11 +1642,10 @@ function CadenceSchedulerPage() {
                     size="sm"
                     variant={tableFilter === "completed" ? "secondary" : "ghost"}
                     onClick={() => setTableFilter("completed")}
-                    className={`h-7 px-2.5 text-xs font-semibold ${
-                      tableFilter === "completed"
-                        ? "bg-white text-slate-800 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800"
-                    }`}
+                    className={`h-7 px-2.5 text-xs font-semibold ${tableFilter === "completed"
+                      ? "bg-white text-slate-800 shadow-sm"
+                      : "text-slate-500 hover:text-slate-800"
+                      }`}
                   >
                     Completed
                   </Button>
@@ -1616,75 +1653,79 @@ function CadenceSchedulerPage() {
 
                 <Button
                   onClick={handleExportExcel}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs gap-1.5 shadow-sm py-1.5 h-8"
+                  disabled={exporting || loadingRegistry}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs gap-1.5 shadow-sm py-1.5 h-8 disabled:opacity-70"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5" /> Export Excel
+                  {exporting ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                  )}
+                  {exporting ? "Exporting..." : "Export Excel"}
                 </Button>
               </div>
             </div>
 
             {/* Grid Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider bg-white">
-                    <th className="p-3">Date</th>
-                    <th className="p-3">Client</th>
-                    <th className="p-3">Project</th>
-                    <th className="p-3">Consultant</th>
-                    <th className="p-3">Cadence Status</th>
-                    <th className="p-3">RAG</th>
-                    <th className="p-3">Comment / Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+            <div className="rounded-lg overflow-hidden border border-slate-200 bg-white shadow-sm mt-4">
+              <Table>
+                <TableHeader className="bg-[#132246]">
+                  <TableRow className="hover:bg-transparent border-0">
+                    <TableHead className="font-semibold text-white">Date</TableHead>
+                    <TableHead className="font-semibold text-white">Client</TableHead>
+                    <TableHead className="font-semibold text-white">Project</TableHead>
+                    <TableHead className="font-semibold text-white">Consultant</TableHead>
+                    <TableHead className="font-semibold text-white text-center">Cadence Status</TableHead>
+                    <TableHead className="font-semibold text-white text-center">RAG</TableHead>
+                    <TableHead className="font-semibold text-white">Comment / Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {loadingRegistry ? (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-slate-400">
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center text-slate-400">
                         Loading registry…
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     <>
                       {filteredRegistrySessions.map((session) => {
                         const rag = formatRagStatus(session.rca_status);
                         return (
                           <React.Fragment key={session.id}>
-                            <tr
-                              className="hover:bg-white transition-colors cursor-pointer even:bg-white"
+                            <TableRow
+                              className="hover:bg-slate-50 transition-colors cursor-pointer even:bg-slate-50/50"
                               onClick={() => handleToggleRegistryRow(session.schedule_id, session.id)}
                             >
-                              <td className="p-3 font-semibold text-slate-900">
+                              <TableCell className="font-semibold text-slate-900">
                                 {session.scheduled_date}
-                              </td>
-                              <td className="p-3">{session.client_name}</td>
-                              <td className="p-3 text-slate-500">
+                              </TableCell>
+                              <TableCell>{session.client_name}</TableCell>
+                              <TableCell className="text-slate-500">
                                 {session.project_name || "—"}
-                              </td>
-                              <td className="p-3 font-semibold text-slate-900">
+                              </TableCell>
+                              <TableCell className="font-semibold text-slate-900">
                                 {session.consultant_name}
-                              </td>
-                              <td className="p-3 capitalize">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                  session.status === "completed"
-                                    ? "bg-sky-50 text-sky-600 border border-sky-200"
-                                    : session.status === "cancelled"
-                                      ? "bg-slate-100 text-slate-500 border border-slate-200"
-                                      : "bg-amber-50 text-amber-600 border border-amber-200"
-                                }`}>
+                              </TableCell>
+                              <TableCell className="capitalize text-center">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${session.status === "completed"
+                                  ? "bg-sky-50 text-sky-600 border border-sky-200"
+                                  : session.status === "cancelled"
+                                    ? "bg-slate-100 text-slate-500 border border-slate-200"
+                                    : "bg-amber-50 text-amber-600 border border-amber-200"
+                                  }`}>
                                   {session.status.replace("_", " ")}
                                 </span>
-                              </td>
-                              <td className="p-3">
+                              </TableCell>
+                              <TableCell className="text-center">
                                 {rag ? (
                                   <span
-                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                      rag.toLowerCase() === "green"
-                                        ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                        : rag.toLowerCase() === "amber"
-                                          ? "bg-amber-50 text-amber-600 border border-amber-200"
-                                          : "bg-red-50 text-red-600 border border-red-200"
-                                    }`}
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${rag.toLowerCase() === "green"
+                                      ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                      : rag.toLowerCase() === "amber"
+                                        ? "bg-amber-50 text-amber-600 border border-amber-200"
+                                        : "bg-red-50 text-red-600 border border-red-200"
+                                      }`}
                                   >
                                     {rag}
                                   </span>
@@ -1693,14 +1734,14 @@ function CadenceSchedulerPage() {
                                     Pending
                                   </span>
                                 )}
-                              </td>
-                              <td className="p-3 max-w-[250px] truncate text-slate-500 italic">
+                              </TableCell>
+                              <TableCell className="max-w-[250px] truncate text-slate-500 italic">
                                 {session.comments || "N/A"}
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                             {registryExpandedRowId === session.id && (
-                              <tr className="bg-white">
-                                <td colSpan={7} className="p-4 border-t border-slate-100">
+                              <TableRow className="bg-slate-50/50 hover:bg-slate-50/50">
+                                <TableCell colSpan={7} className="p-4 border-t border-slate-100">
                                   {loadingRegistryHistory ? (
                                     <div className="text-center text-xs text-slate-400 p-4">Loading timeline...</div>
                                   ) : registryHistorySessions.length > 0 ? (
@@ -1712,15 +1753,14 @@ function CadenceSchedulerPage() {
                                           return (
                                             <div key={idx} className="relative pl-6">
                                               <span
-                                                className={`absolute -left-1.5 top-1.5 h-3 w-3 rounded-full border-2 border-white ${
-                                                  hRag?.toLowerCase() === "green"
-                                                    ? "bg-emerald-500"
-                                                    : hRag?.toLowerCase() === "amber"
-                                                      ? "bg-amber-500"
-                                                      : hRag?.toLowerCase() === "red"
-                                                        ? "bg-red-500"
-                                                        : "bg-slate-300"
-                                                }`}
+                                                className={`absolute -left-1.5 top-1.5 h-3 w-3 rounded-full border-2 border-white ${hRag?.toLowerCase() === "green"
+                                                  ? "bg-emerald-500"
+                                                  : hRag?.toLowerCase() === "amber"
+                                                    ? "bg-amber-500"
+                                                    : hRag?.toLowerCase() === "red"
+                                                      ? "bg-red-500"
+                                                      : "bg-slate-300"
+                                                  }`}
                                               />
                                               <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
                                                 <div className="flex items-center justify-between font-bold text-slate-700 text-[11px] mb-1">
@@ -1741,297 +1781,269 @@ function CadenceSchedulerPage() {
                                   ) : (
                                     <div className="text-center text-xs text-slate-400 p-4">No history available for this cadence.</div>
                                   )}
-                                </td>
-                              </tr>
+                                </TableCell>
+                              </TableRow>
                             )}
                           </React.Fragment>
                         );
                       })}
                       {!loadingRegistry && filteredRegistrySessions.length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="p-8 text-center text-slate-400">
+                        <TableRow>
+                          <TableCell colSpan={7} className="h-24 text-center text-slate-400">
                             No cadences matching filters.
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )}
                     </>
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-              <span className="text-xs text-slate-400">
-                Showing{" "}
-                <span className="text-slate-700 font-semibold">
-                  {registryTotal === 0
-                    ? 0
-                    : (registryPage - 1) * REGISTRY_PAGE_SIZE + 1}
-                  –
-                  {Math.min(registryPage * REGISTRY_PAGE_SIZE, registryTotal)}
-                </span>{" "}
-                of{" "}
-                <span className="text-slate-700 font-semibold">{registryTotal}</span> registry rows
-                {registryTotalPages > 1 && (
-                  <span className="text-slate-400">
-                    {" "}
-                    (page {registryPage} of {registryTotalPages})
-                  </span>
-                )}
-              </span>
-              <div className="flex items-center gap-1.5">
+            <div className="flex justify-center mt-4">
+              <CustomTablePagination
+                rowsPerPageOptions={[5, 10, 25, 50, 100]}
+                count={registryTotal}
+                page={registryPage - 1}
+                onPageChange={(e: any, newPage: number) => setRegistryPage(newPage + 1)}
+                rowsPerPage={registryPerPage}
+                onRowsPerPageChange={(e: any) => {
+                  setRegistryPerPage(parseInt(e.target.value, 10));
+                  setRegistryPage(1);
+                }}
+              />
+            </div>
+          </div>
+        </main>
+
+        {/* CREATE CADENCE POPUP MODAL DIALOG */}
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="bg-white px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5 text-sky-500" /> New catch-up Cadence
+                </h3>
                 <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs font-semibold px-3"
-                  disabled={loadingRegistry || registryPage <= 1}
-                  onClick={() => setRegistryPage((p) => Math.max(1, p - 1))}
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setShowCreateModal(false)}
+                  className="h-8 w-8 hover:bg-slate-200 rounded-lg text-slate-400"
                 >
-                  Previous
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs font-semibold px-3"
-                  disabled={loadingRegistry || registryPage >= registryTotalPages}
-                  onClick={() => setRegistryPage((p) => p + 1)}
-                >
-                  Next
+                  <X className="w-4 h-4" />
                 </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
 
-      {/* CREATE CADENCE POPUP MODAL DIALOG */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="bg-white px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-sky-500" /> New catch-up Cadence
-              </h3>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => setShowCreateModal(false)}
-                className="h-8 w-8 hover:bg-slate-200 rounded-lg text-slate-400"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* Form Content */}
-            <form onSubmit={handleCreateCadence} className="p-6 space-y-4 text-xs font-semibold">
-              <div className="space-y-1">
-                <label className="text-slate-500 uppercase tracking-wider text-[10px]">
-                  Client Partner
-                </label>
-                {loadingClients ? (
-                  <div className="text-xs text-slate-400 p-2 italic">Loading clients...</div>
-                ) : (
-                  <select
-                    value={modalClientId}
-                    onChange={(e) => setModalClientId(e.target.value ? Number(e.target.value) : "")}
-                    className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
-                  >
-                    <option value="">Select a Client</option>
-                    {apiClients.map((cl) => (
-                      <option key={cl.id} value={cl.id}>
-                        {cl.name} ({cl.industry})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-slate-500 uppercase tracking-wider text-[10px]">
-                  Project Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Migration Phase 2"
-                  value={modalProject}
-                  onChange={(e) => setModalProject(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-medium"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-slate-500 uppercase tracking-wider text-[10px]">
-                  Consultant
-                </label>
-                {loadingConsultants ? (
-                  <div className="text-xs text-slate-400 p-2 italic">Loading consultants...</div>
-                ) : (
-                  <select
-                    value={modalConsultantId}
-                    onChange={(e) =>
-                      setModalConsultantId(e.target.value ? Number(e.target.value) : "")
-                    }
-                    className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
-                    disabled={!modalClientId}
-                  >
-                    <option value="">Select a Consultant</option>
-                    {apiConsultants.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.emp_id})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              {/* Form Content */}
+              <form onSubmit={handleCreateCadence} className="p-6 space-y-4 text-xs font-semibold">
                 <div className="space-y-1">
                   <label className="text-slate-500 uppercase tracking-wider text-[10px]">
-                    Date
+                    Client Partner
                   </label>
-                  <input
-                    type="date"
-                    value={modalDate}
-                    onChange={(e) => setModalDate(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-slate-500 uppercase tracking-wider text-[10px]">
-                    Meeting Time
-                  </label>
-                  <input
-                    type="time"
-                    value={modalMeetingTime}
-                    onChange={(e) => setModalMeetingTime(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-slate-500 uppercase tracking-wider text-[10px]">
-                    Duration
-                  </label>
-                  <select
-                    value={modalTime}
-                    onChange={(e) => setModalTime(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
-                  >
-                    <option value="15 mins">15 minutes</option>
-                    <option value="30 mins">30 minutes</option>
-                    <option value="1 hr">1 hour</option>
-                    <option value="Custom">Custom slot</option>
-                  </select>
-                </div>
-
-                {modalTime === "Custom" ? (
-                  <div className="space-y-1 animate-in zoom-in-95 duration-200">
-                    <label className="text-slate-500 uppercase tracking-wider text-[10px]">
-                      Duration (mins)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 45"
-                      value={modalCustomDuration}
-                      onChange={(e) => setModalCustomDuration(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-1 opacity-50 select-none">
-                    <label className="text-slate-500 uppercase tracking-wider text-[10px]">
-                      Duration (mins)
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      value={modalTime === "15 mins" ? "15" : modalTime === "30 mins" ? "30" : "60"}
-                      className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-400 font-semibold cursor-not-allowed opacity-60"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Recurring Switch */}
-              <div className="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-lg">
-                <div>
-                  <p className="text-xs font-bold text-slate-800">Recurring catch-up cadence</p>
-                  <p className="text-[10px] text-slate-400 font-medium">
-                    Auto-generate catch-ups on a recurring schedule
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={modalRecurring}
-                  onChange={(e) => setModalRecurring(e.target.checked)}
-                  className="h-4 w-4 rounded text-sky-600 focus:ring-sky-500"
-                />
-              </div>
-
-              {modalRecurring && (
-                <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
-                  <div className="space-y-1">
-                    <label className="text-slate-500 uppercase tracking-wider text-[10px]">
-                      Frequency
-                    </label>
+                  {loadingClients ? (
+                    <div className="text-xs text-slate-400 p-2 italic">Loading clients...</div>
+                  ) : (
                     <select
-                      value={modalFrequencyWeeks}
-                      onChange={(e) => setModalFrequencyWeeks(Number(e.target.value))}
+                      value={modalClientId}
+                      onChange={(e) => setModalClientId(e.target.value ? Number(e.target.value) : "")}
                       className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
                     >
-                      {CADENCE_FREQUENCY_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
+                      <option value="">Select a Client</option>
+                      {apiClients.map((cl) => (
+                        <option key={cl.id} value={cl.id}>
+                          {cl.name} ({cl.industry})
                         </option>
                       ))}
                     </select>
-                    <p className="text-[10px] text-slate-400 font-medium">
-                      {getCadenceFrequencyLabel(modalFrequencyWeeks)} schedule
-                    </p>
-                  </div>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-500 uppercase tracking-wider text-[10px]">
+                    Project Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Migration Phase 2"
+                    value={modalProject}
+                    onChange={(e) => setModalProject(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-medium"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-500 uppercase tracking-wider text-[10px]">
+                    Consultant
+                  </label>
+                  {loadingConsultants ? (
+                    <div className="text-xs text-slate-400 p-2 italic">Loading consultants...</div>
+                  ) : (
+                    <select
+                      value={modalConsultantId}
+                      onChange={(e) =>
+                        setModalConsultantId(e.target.value ? Number(e.target.value) : "")
+                      }
+                      className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
+                      disabled={!modalClientId}
+                    >
+                      <option value="">Select a Consultant</option>
+                      {apiConsultants.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.emp_id})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-slate-500 uppercase tracking-wider text-[10px]">
-                      End Date (Till Date)
+                      Date
                     </label>
                     <input
                       type="date"
-                      value={modalTillDate}
-                      onChange={(e) => setModalTillDate(e.target.value)}
-                      min={modalDate || undefined}
+                      value={modalDate}
+                      onChange={(e) => setModalDate(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-500 uppercase tracking-wider text-[10px]">
+                      Meeting Time
+                    </label>
+                    <input
+                      type="time"
+                      value={modalMeetingTime}
+                      onChange={(e) => setModalMeetingTime(e.target.value)}
                       className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
                     />
                   </div>
                 </div>
-              )}
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-150">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setShowCreateModal(false)}
-                  disabled={creatingCadence}
-                  className="text-slate-600 hover:text-slate-800 hover:bg-slate-100"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={creatingCadence}
-                  className="bg-sky-600 hover:bg-sky-500 text-white font-bold"
-                >
-                  {creatingCadence ? "Scheduling..." : "Schedule Catch-up"}
-                </Button>
-              </div>
-            </form>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-slate-500 uppercase tracking-wider text-[10px]">
+                      Duration
+                    </label>
+                    <select
+                      value={modalTime}
+                      onChange={(e) => setModalTime(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
+                    >
+                      <option value="15 mins">15 minutes</option>
+                      <option value="30 mins">30 minutes</option>
+                      <option value="1 hr">1 hour</option>
+                      <option value="Custom">Custom slot</option>
+                    </select>
+                  </div>
+
+                  {modalTime === "Custom" ? (
+                    <div className="space-y-1 animate-in zoom-in-95 duration-200">
+                      <label className="text-slate-500 uppercase tracking-wider text-[10px]">
+                        Duration (mins)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 45"
+                        value={modalCustomDuration}
+                        onChange={(e) => setModalCustomDuration(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1 opacity-50 select-none">
+                      <label className="text-slate-500 uppercase tracking-wider text-[10px]">
+                        Duration (mins)
+                      </label>
+                      <input
+                        type="text"
+                        disabled
+                        value={modalTime === "15 mins" ? "15" : modalTime === "30 mins" ? "30" : "60"}
+                        className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-400 font-semibold cursor-not-allowed opacity-60"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Recurring Switch */}
+                <div className="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-lg">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Recurring catch-up cadence</p>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Auto-generate catch-ups on a recurring schedule
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={modalRecurring}
+                    onChange={(e) => setModalRecurring(e.target.checked)}
+                    className="h-4 w-4 rounded text-sky-600 focus:ring-sky-500"
+                  />
+                </div>
+
+                {modalRecurring && (
+                  <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+                    <div className="space-y-1">
+                      <label className="text-slate-500 uppercase tracking-wider text-[10px]">
+                        Frequency
+                      </label>
+                      <select
+                        value={modalFrequencyWeeks}
+                        onChange={(e) => setModalFrequencyWeeks(Number(e.target.value))}
+                        className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
+                      >
+                        {CADENCE_FREQUENCY_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        {getCadenceFrequencyLabel(modalFrequencyWeeks)} schedule
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-slate-500 uppercase tracking-wider text-[10px]">
+                        End Date (Till Date)
+                      </label>
+                      <input
+                        type="date"
+                        value={modalTillDate}
+                        onChange={(e) => setModalTillDate(e.target.value)}
+                        min={modalDate || undefined}
+                        className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-150">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowCreateModal(false)}
+                    disabled={creatingCadence}
+                    className="text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={creatingCadence}
+                    className="bg-sky-600 hover:bg-sky-500 text-white font-bold"
+                  >
+                    {creatingCadence ? "Scheduling..." : "Schedule Catch-up"}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </TooltipProvider>
   );
 }

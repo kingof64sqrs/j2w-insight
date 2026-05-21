@@ -137,9 +137,9 @@ function ProfilePage() {
             asChild
             className="text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 gap-2 transition-all"
           >
-            <Link to="/dashboard">
+            {/* <Link to="/dashboard">
               <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-            </Link>
+            </Link> */}
           </Button>
 
           {!loading && !error && profile && (
@@ -212,8 +212,8 @@ function ProfilePage() {
                 {/* Initial Avatar */}
                 <div className="relative group">
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-sky-400 to-indigo-500 rounded-full blur opacity-40 group-hover:opacity-60 transition duration-300" />
-                  <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-slate-50 border border-slate-200 text-3xl font-extrabold tracking-wider text-slate-800">
-                    {getInitials(isEditing ? editName : profile.name)}
+                  <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-white border border-slate-200 overflow-hidden shadow-inner">
+                    <img src="/profile-icon.svg" className="h-16 w-16 opacity-90" alt="Profile" />
                   </div>
                 </div>
 

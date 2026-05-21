@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CalendarClock,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,6 +34,7 @@ import { cn } from "@/lib/utils";
 
 const items = [
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Incident Engine", url: "/incident-engine", icon: AlertTriangle },
   { title: "Cadence Scheduler", url: "/cadence", icon: CalendarClock },
   { title: "Clients", url: "/clients", icon: Building2 },
   { title: "Tickets", url: "/tickets", icon: Ticket },
@@ -163,8 +165,10 @@ export function AppSidebar() {
                 ],
               )}
             >
-              <Link to="/profile">
-                <User className="!size-[18px] shrink-0 text-slate-400 group-hover:text-white" />
+              <Link to="/profile" className="flex items-center gap-2 w-full">
+                <div className="h-7 w-7 shrink-0 rounded-full bg-slate-100 flex items-center justify-center p-[2px] shadow-sm border border-slate-600/50 group-hover:bg-white transition-colors">
+                  <img src="/profile-icon.svg" className="h-full w-full object-contain" alt="Profile" />
+                </div>
                 {!collapsed && (
                   <div className="flex min-w-0 flex-col items-start text-left leading-tight">
                     <span className="truncate text-sm font-semibold text-white">{user?.name}</span>

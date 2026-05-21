@@ -10,12 +10,96 @@ import type {
   CadenceSessionsResponse,
   CadenceSessionSummaryResponse,
   UpdateCadenceSessionRequest,
+  ExportCadenceSessionsResponse,
+  ConsultantItem,
 } from "./types";
 
 const getBaseUrl = () => {
   const base = import.meta.env.VITE_BASE_URL || "http://localhost:8000/";
   return base.endsWith("/") ? base : `${base}/`;
 };
+
+// ---- Token Management ----
+
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const exp = payload.exp;
+    // Buffer of 60 seconds
+    if (Date.now() >= exp * 1000 - 60000) {
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return true; // Treat as expired if parsing fails
+  }
+}
+
+let isRefreshing = false;
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshTokenApi(oldToken: string): Promise<string> {
+  const baseUrl = getBaseUrl();
+  const response = await fetch(`${baseUrl}api/hrbp/users/refresh_token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ token: oldToken }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Token refresh failed");
+  }
+  
+  const data = await response.json();
+  if (data.meta?.status && data.data?.access_token) {
+    return data.data.access_token;
+  }
+  throw new Error("Invalid refresh response");
+}
+
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  let token = typeof window !== "undefined" ? localStorage.getItem("j2w_token") : null;
+
+  if (token && isTokenExpired(token)) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = refreshTokenApi(token)
+        .then((newToken) => {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("j2w_token", newToken);
+          }
+          isRefreshing = false;
+          refreshPromise = null;
+          return newToken;
+        })
+        .catch((e) => {
+          isRefreshing = false;
+          refreshPromise = null;
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("j2w_token");
+            window.location.href = "/";
+          }
+          throw e;
+        });
+    }
+    // Wait for the ongoing refresh to finish
+    token = await refreshPromise;
+  }
+
+  const headers = new Headers(options.headers || {});
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  return fetch(url, { ...options, headers });
+}
+
+// ---- Endpoints ----
 
 export async function loginApi(email: string, password: string): Promise<LoginResponse> {
   const baseUrl = getBaseUrl();
@@ -34,9 +118,7 @@ export async function loginApi(email: string, password: string): Promise<LoginRe
       if (errData && errData.detail) {
         errMsg = errData.detail;
       }
-    } catch (e) {
-      // Ignore JSON parsing errors and fallback
-    }
+    } catch (e) {}
     throw new Error(errMsg);
   }
 
@@ -45,28 +127,18 @@ export async function loginApi(email: string, password: string): Promise<LoginRe
 
 export async function getUserProfile(userId: number): Promise<UserProfileResponse> {
   const baseUrl = getBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("j2w_token") : null;
-  const response = await fetch(`${baseUrl}api/hrbp/users/${userId}`, {
+  const response = await fetchWithAuth(`${baseUrl}api/hrbp/users/${userId}`, {
     method: "GET",
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-      "Content-Type": "application/json",
-    },
   });
 
   if (!response.ok) {
     let errMsg = "Failed to fetch profile details";
     try {
       const errData = await response.json();
-      if (errData && errData.detail) {
-        errMsg = errData.detail;
-      }
-    } catch (e) {
-      // Ignore JSON parsing errors
-    }
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
     throw new Error(errMsg);
   }
-
   return response.json();
 }
 
@@ -75,13 +147,8 @@ export async function updateUserProfile(
   payload: UpdateUserProfileRequest,
 ): Promise<UpdateUserProfileResponse> {
   const baseUrl = getBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("j2w_token") : null;
-  const response = await fetch(`${baseUrl}api/hrbp/users/${userId}`, {
+  const response = await fetchWithAuth(`${baseUrl}api/hrbp/users/${userId}`, {
     method: "PUT",
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(payload),
   });
 
@@ -89,56 +156,66 @@ export async function updateUserProfile(
     let errMsg = "Failed to update profile details";
     try {
       const errData = await response.json();
-      if (errData && errData.detail) {
-        errMsg = errData.detail;
-      }
-    } catch (e) {
-      // Ignore JSON parsing errors
-    }
-    throw new Error(errMsg);
-  }
-
-  return response.json();
-}
-
-export async function getClientsApi(hrbpId: number): Promise<ClientListResponse> {
-  const baseUrl = getBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("j2w_token") : null;
-  const response = await fetch(`${baseUrl}api/hrbp/clients?hrbp_id=${hrbpId}&per_page=-1`, {
-    method: "GET",
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    let errMsg = "Failed to fetch clients";
-    try {
-      const errData = await response.json();
-      if (errData && errData.detail) {
-        errMsg = errData.detail;
-      }
+      if (errData && errData.detail) errMsg = errData.detail;
     } catch (e) {}
     throw new Error(errMsg);
   }
   return response.json();
 }
 
-export async function getConsultantsApi(
-  hrbpId: number,
-  clientId: number,
-): Promise<ConsultantListResponse> {
+export async function getClientsApi(params: {
+  hrbp_id: number;
+  page_no?: number;
+  per_page?: number;
+  date_from?: string;
+  date_to?: string;
+}): Promise<ClientListResponse> {
   const baseUrl = getBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("j2w_token") : null;
-  const response = await fetch(
-    `${baseUrl}api/hrbp/consultants?hrbp_id=${hrbpId}&client_id=${clientId}&per_page=-1`,
+  const queryParams = new URLSearchParams({
+    hrbp_id: String(params.hrbp_id),
+    page_no: String(params.page_no ?? 1),
+    per_page: String(params.per_page ?? 5),
+  });
+  if (params.date_from) queryParams.append("date_from", params.date_from);
+  if (params.date_to) queryParams.append("date_to", params.date_to);
+
+  const response = await fetchWithAuth(`${baseUrl}api/hrbp/clients?${queryParams.toString()}`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    let errMsg = "Failed to fetch clients";
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
+  return response.json();
+}
+
+export async function getConsultantsApi(params: {
+  hrbp_id: number;
+  client_id?: number;
+  page_no?: number;
+  per_page?: number;
+  date_from?: string;
+  date_to?: string;
+}): Promise<ConsultantListResponse> {
+  const baseUrl = getBaseUrl();
+  const queryParams = new URLSearchParams({
+    hrbp_id: String(params.hrbp_id),
+    per_page: String(params.per_page ?? -1),
+  });
+  if (params.client_id !== undefined) queryParams.append("client_id", String(params.client_id));
+  if (params.page_no !== undefined) queryParams.append("page_no", String(params.page_no));
+  if (params.date_from) queryParams.append("date_from", params.date_from);
+  if (params.date_to) queryParams.append("date_to", params.date_to);
+
+  const response = await fetchWithAuth(
+    `${baseUrl}api/hrbp/consultants?${queryParams.toString()}`,
     {
       method: "GET",
-      headers: {
-        Authorization: token ? `Bearer ${token}` : "",
-        "Content-Type": "application/json",
-      },
     },
   );
 
@@ -146,9 +223,24 @@ export async function getConsultantsApi(
     let errMsg = "Failed to fetch consultants";
     try {
       const errData = await response.json();
-      if (errData && errData.detail) {
-        errMsg = errData.detail;
-      }
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
+  return response.json();
+}
+
+export async function getConsultantDetailsApi(consultantId: number): Promise<{ meta: any, data: ConsultantItem }> {
+  const baseUrl = getBaseUrl();
+  const response = await fetchWithAuth(`${baseUrl}api/hrbp/consultants/${consultantId}`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    let errMsg = "Failed to fetch consultant details";
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errMsg = errData.detail;
     } catch (e) {}
     throw new Error(errMsg);
   }
@@ -159,13 +251,8 @@ export async function createCadenceScheduleApi(
   payload: CreateCadenceScheduleRequest,
 ): Promise<CreateCadenceScheduleResponse> {
   const baseUrl = getBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("j2w_token") : null;
-  const response = await fetch(`${baseUrl}api/hrbp/cadence-schedules`, {
+  const response = await fetchWithAuth(`${baseUrl}api/hrbp/cadence-schedules`, {
     method: "POST",
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify(payload),
   });
 
@@ -173,9 +260,7 @@ export async function createCadenceScheduleApi(
     let errMsg = "Failed to create cadence schedule";
     try {
       const errData = await response.json();
-      if (errData && errData.detail) {
-        errMsg = errData.detail;
-      }
+      if (errData && errData.detail) errMsg = errData.detail;
     } catch (e) {}
     throw new Error(errMsg);
   }
@@ -192,8 +277,6 @@ export async function getCadenceSessionsApi(params: {
   per_page?: number;
 }): Promise<CadenceSessionsResponse> {
   const baseUrl = getBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("j2w_token") : null;
-
   const queryParams = new URLSearchParams({
     hrbp_id: String(params.hrbp_id),
     per_page: String(params.per_page ?? -1),
@@ -214,14 +297,10 @@ export async function getCadenceSessionsApi(params: {
     queryParams.append("date_to", params.date_to);
   }
 
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `${baseUrl}api/hrbp/cadence-schedules/sessions?${queryParams.toString()}`,
     {
       method: "GET",
-      headers: {
-        Authorization: token ? `Bearer ${token}` : "",
-        "Content-Type": "application/json",
-      },
     },
   );
 
@@ -229,12 +308,50 @@ export async function getCadenceSessionsApi(params: {
     let errMsg = "Failed to fetch cadence sessions";
     try {
       const errData = await response.json();
-      if (errData && errData.detail) {
-        errMsg = errData.detail;
-      }
+      if (errData && errData.detail) errMsg = errData.detail;
     } catch (e) {}
     throw new Error(errMsg);
   }
+  return response.json();
+}
+
+export async function exportCadenceSessionsApi(params: {
+  hrbp_id: number;
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+}): Promise<ExportCadenceSessionsResponse> {
+  const baseUrl = getBaseUrl();
+  const queryParams = new URLSearchParams({
+    hrbp_id: String(params.hrbp_id),
+  });
+
+  if (params.status) {
+    queryParams.append("status", params.status);
+  }
+  if (params.date_from) {
+    queryParams.append("date_from", params.date_from);
+  }
+  if (params.date_to) {
+    queryParams.append("date_to", params.date_to);
+  }
+
+  const response = await fetchWithAuth(
+    `${baseUrl}api/hrbp/cadence-schedules/sessions/export?${queryParams.toString()}`,
+    {
+      method: "GET",
+    }
+  );
+
+  if (!response.ok) {
+    let errMsg = "Failed to export cadence sessions";
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
+  
   return response.json();
 }
 
@@ -242,16 +359,10 @@ export async function getCadenceSessionsSummaryApi(
   hrbpId: number,
 ): Promise<CadenceSessionSummaryResponse> {
   const baseUrl = getBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("j2w_token") : null;
-
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `${baseUrl}api/hrbp/cadence-schedules/sessions/summary?hrbp_id=${hrbpId}`,
     {
       method: "GET",
-      headers: {
-        Authorization: token ? `Bearer ${token}` : "",
-        "Content-Type": "application/json",
-      },
     },
   );
 
@@ -259,9 +370,7 @@ export async function getCadenceSessionsSummaryApi(
     let errMsg = "Failed to fetch cadence sessions summary";
     try {
       const errData = await response.json();
-      if (errData && errData.detail) {
-        errMsg = errData.detail;
-      }
+      if (errData && errData.detail) errMsg = errData.detail;
     } catch (e) {}
     throw new Error(errMsg);
   }
@@ -274,16 +383,10 @@ export async function updateCadenceSessionApi(
   payload: UpdateCadenceSessionRequest,
 ): Promise<any> {
   const baseUrl = getBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("j2w_token") : null;
-
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `${baseUrl}api/hrbp/cadence-schedules/${scheduleId}/sessions/${sessionId}`,
     {
       method: "PATCH",
-      headers: {
-        Authorization: token ? `Bearer ${token}` : "",
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify(payload),
     }
   );
@@ -292,9 +395,7 @@ export async function updateCadenceSessionApi(
     let errMsg = "Failed to update cadence session";
     try {
       const errData = await response.json();
-      if (errData && errData.detail) {
-        errMsg = errData.detail;
-      }
+      if (errData && errData.detail) errMsg = errData.detail;
     } catch (e) {}
     throw new Error(errMsg);
   }
@@ -305,16 +406,10 @@ export async function getCadenceScheduleSessionsApi(
   scheduleId: number,
 ): Promise<CadenceSessionsResponse> {
   const baseUrl = getBaseUrl();
-  const token = typeof window !== "undefined" ? localStorage.getItem("j2w_token") : null;
-
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `${baseUrl}api/hrbp/cadence-schedules/${scheduleId}/sessions?per_page=-1`,
     {
       method: "GET",
-      headers: {
-        Authorization: token ? `Bearer ${token}` : "",
-        "Content-Type": "application/json",
-      },
     }
   );
 
@@ -322,9 +417,7 @@ export async function getCadenceScheduleSessionsApi(
     let errMsg = "Failed to fetch cadence schedule sessions";
     try {
       const errData = await response.json();
-      if (errData && errData.detail) {
-        errMsg = errData.detail;
-      }
+      if (errData && errData.detail) errMsg = errData.detail;
     } catch (e) {}
     throw new Error(errMsg);
   }
