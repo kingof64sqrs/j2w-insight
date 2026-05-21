@@ -19,8 +19,7 @@ const riskOrder: Record<RiskLevel, number> = {
 
 function sortByUrgency(items: Ticket[]) {
   return [...items].sort(
-    (a, b) =>
-      riskOrder[a.riskLevel] - riskOrder[b.riskLevel] || b.daysOpen - a.daysOpen,
+    (a, b) => riskOrder[a.riskLevel] - riskOrder[b.riskLevel] || b.daysOpen - a.daysOpen,
   );
 }
 
@@ -130,11 +129,7 @@ function TicketKanbanCard({ ticket }: { ticket: Ticket }) {
           <div
             className={cn(
               "h-full rounded-full transition-all",
-              progress >= 100
-                ? "bg-emerald-500"
-                : progress >= 50
-                  ? "bg-indigo-500"
-                  : "bg-blue-400",
+              progress >= 100 ? "bg-emerald-500" : progress >= 50 ? "bg-indigo-500" : "bg-blue-400",
             )}
             style={{ width: `${progress}%` }}
           />
@@ -142,7 +137,10 @@ function TicketKanbanCard({ ticket }: { ticket: Ticket }) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2">
-        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", riskBadgeStyles[ticket.riskLevel])}>
+        <Badge
+          variant="outline"
+          className={cn("text-[10px] px-1.5 py-0", riskBadgeStyles[ticket.riskLevel])}
+        >
           {ticket.riskLevel}
         </Badge>
         <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -212,9 +210,7 @@ export function TicketKanbanBoard({
               {columnTickets.length === 0 ? (
                 <p className="py-8 text-center text-xs text-muted-foreground">No tickets</p>
               ) : (
-                columnTickets.map((ticket) => (
-                  <TicketKanbanCard key={ticket.id} ticket={ticket} />
-                ))
+                columnTickets.map((ticket) => <TicketKanbanCard key={ticket.id} ticket={ticket} />)
               )}
             </div>
           </div>

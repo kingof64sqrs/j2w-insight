@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { TopBar } from "@/components/TopBar";
-import { PageHeader } from "@/components/PageHeader";
 import { NewTicketDialog } from "@/components/NewTicketDialog";
 import { TicketKanbanBoard } from "@/components/TicketKanbanBoard";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,20 +45,13 @@ function TicketsPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <TopBar onNewTicket={() => setOpen(true)} />
+      <TopBar
+        title="Tickets"
+        subtitle="Incident management across SOPs"
+        onNewTicket={() => setOpen(true)}
+      />
       <NewTicketDialog open={open} onOpenChange={setOpen} />
       <main className="flex-1 p-6 space-y-6">
-        <PageHeader
-          title="Tickets"
-          subtitle="Incident management across SOPs"
-          actions={
-            <Button onClick={() => setOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              New ticket
-            </Button>
-          }
-        />
-
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             { l: "Open", v: stats.open, i: AlertCircle, c: "text-blue-600" },
@@ -118,7 +110,9 @@ function TicketsPage() {
 
           <div className="p-4 bg-muted/20">
             {filtered.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">No tickets match your filters.</p>
+              <p className="py-16 text-center text-sm text-muted-foreground">
+                No tickets match your filters.
+              </p>
             ) : (
               <TicketKanbanBoard tickets={filtered} />
             )}

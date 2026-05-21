@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { loginApi } from "@/apiService/api";
 
 interface User {
   email: string;
   name: string;
   role: string;
+  id?: number;
 }
 
 interface AuthCtx {
@@ -11,11 +13,13 @@ interface AuthCtx {
   login: (email: string, password: string) => Promise<void>;
   loginDemo: () => void;
   logout: () => void;
+  updateUserState: (updates: Partial<User>) => void;
   ready: boolean;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
 const KEY = "j2w_user";
+const TOKEN_KEY = "j2w_token";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -24,27 +28,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = typeof window !== "undefined" ? localStorage.getItem(KEY) : null;
-      if (raw) setUser(JSON.parse(raw));
+      const token = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
+      const storedId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+      if (raw && token) {
+        const u = JSON.parse(raw);
+        if (!u.id && storedId) {
+          u.id = Number(storedId);
+        }
+        setUser(u);
+      } else if (typeof window !== "undefined") {
+        localStorage.removeItem(KEY);
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem("user_id");
+        sessionStorage.removeItem("user_id");
+      }
     } catch {}
     setReady(true);
   }, []);
 
-  const login = async (email: string, _password: string) => {
-    const u: User = { email, name: email.split("@")[0] || "HRBP User", role: "HRBP" };
+  const login = async (email: string, password: string) => {
+    const res = await loginApi(email, password);
+    const u: User = {
+      email: res.email,
+      name: res.name,
+      role: res.role,
+      id: res.user_id,
+    };
     localStorage.setItem(KEY, JSON.stringify(u));
+    localStorage.setItem(TOKEN_KEY, res.access_token);
+    localStorage.setItem("user_id", String(res.user_id));
+    sessionStorage.setItem("user_id", String(res.user_id));
     setUser(u);
   };
   const loginDemo = () => {
-    const u: User = { email: "demo@j2w.io", name: "Priya Mehta", role: "Senior HRBP" };
+    const u: User = { email: "demo@j2w.io", name: "Priya Mehta", role: "Senior HRBP", id: 6 };
     localStorage.setItem(KEY, JSON.stringify(u));
+    localStorage.setItem(TOKEN_KEY, "demo-token-12345");
+    localStorage.setItem("user_id", "6");
+    sessionStorage.setItem("user_id", "6");
     setUser(u);
   };
   const logout = () => {
     localStorage.removeItem(KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem("user_id");
+    sessionStorage.removeItem("user_id");
     setUser(null);
   };
+  const updateUserState = (updates: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...updates };
+      localStorage.setItem(KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
 
-  return <Ctx.Provider value={{ user, login, loginDemo, logout, ready }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ user, login, loginDemo, logout, updateUserState, ready }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth() {
@@ -55,5 +99,5 @@ export function useAuth() {
 
 export function isAuthed() {
   if (typeof window === "undefined") return false;
-  return !!localStorage.getItem(KEY);
+  return !!localStorage.getItem("j2w_token");
 }

@@ -20,6 +20,11 @@ function AuthLayout() {
         {
           "--sidebar-width": "16rem",
           "--sidebar-width-icon": "5rem",
+          "--sidebar": "#0f2249",
+          "--sidebar-foreground": "#94a3b8",
+          "--sidebar-border": "#1e2e4f",
+          "--sidebar-accent": "rgba(255, 255, 255, 0.08)",
+          "--sidebar-accent-foreground": "#ffffff",
         } as CSSProperties
       }
     >
