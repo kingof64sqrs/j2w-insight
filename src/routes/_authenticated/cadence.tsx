@@ -51,6 +51,9 @@ import React from "react";
 import { CustomTablePagination } from "@/components/CustomPagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CustomDateRangePicker } from "@/components/CustomDateRangePicker";
+import { CustomDatePicker } from "@/components/CustomDatePicker";
+import { CustomTimePicker } from "@/components/CustomTimePicker";
+import { CustomSelect } from "@/components/CustomSelect";
 import dayjs, { Dayjs } from "dayjs";
 
 export const Route = createFileRoute("/_authenticated/cadence")({
@@ -308,16 +311,18 @@ function RcaSelect({
   className?: string;
 }) {
   return (
-    <select
+    <CustomSelect
       value={value}
-      onChange={(e) => onChange(e.target.value as RcaValue)}
-      className={`bg-white border border-slate-200 rounded-md px-2 py-1.5 text-[10px] font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 ${className}`}
-    >
-      <option value="">Select RAG</option>
-      <option value="green">Green</option>
-      <option value="amber">Amber</option>
-      <option value="red">Red</option>
-    </select>
+      onChange={(v) => onChange(v as RcaValue)}
+      placeholder="Select RAG"
+      options={[
+        { value: "green", label: "Green" },
+        { value: "amber", label: "Amber" },
+        { value: "red", label: "Red" },
+      ]}
+      className={className}
+      triggerClassName="h-7 py-1 px-2 text-[10px] w-[100px]"
+    />
   );
 }
 
@@ -1182,10 +1187,10 @@ function CadenceSchedulerPage() {
           {/* Kanban Section */}
           <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 min-h-[520px] mb-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {/* TODAY Column */}
-            <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
-              <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-sky-50/80">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500" />
-                <h3 className="text-sm font-semibold text-slate-900 flex-1">Today</h3>
+            <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-border/60 bg-muted/30 h-full min-h-[500px]">
+              <div className="flex items-center gap-2 rounded-t-xl border-b border-border/60 px-3 py-2.5 bg-blue-50/80 min-h-[52px]">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                <h3 className="text-sm font-semibold text-foreground flex-1">Today</h3>
                 <Button
                   size="icon"
                   variant="ghost"
@@ -1193,7 +1198,7 @@ function CadenceSchedulerPage() {
                     setModalDate(TODAY_DATE_STR);
                     setShowCreateModal(true);
                   }}
-                  className="h-8 w-8 hover:bg-slate-100 text-slate-500"
+                  className="h-8 w-8 hover:bg-slate-100 text-muted-foreground"
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
@@ -1205,22 +1210,24 @@ function CadenceSchedulerPage() {
                   .map((c) => (
                     <div
                       key={c.id}
-                      className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-sky-500/30 hover:shadow-md space-y-3"
+                      className="block rounded-lg border border-border/80 bg-card p-3 shadow-sm transition-shadow hover:border-primary/30 hover:shadow-md space-y-3"
                     >
                       {/* Item Header */}
-                      <div className="flex items-start gap-3">
-                        <ConsultantInitialsBadge
-                          name={c.consultant}
-                          className="h-10 w-10 border-2 border-sky-200 text-xs text-sky-700"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-slate-800 truncate">
-                            {c.client} /{" "}
-                            <span className="text-slate-500 font-medium">{c.project}</span>
-                          </p>
-                          <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-0.5 truncate">
-                            <span className="font-semibold">{c.consultant}</span> &bull; <Clock className="w-3.5 h-3.5 text-slate-400 ml-1" /> {c.time}
-                          </p>
+                      <div>
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <span className="inline-block max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-sky-100 text-sky-800">
+                            {c.client}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold leading-snug text-foreground">
+                          {c.project}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                          {c.consultant}
+                        </p>
+                        <div className="mt-3 flex items-center gap-1 text-[10px] text-muted-foreground pt-2 border-t border-border/60">
+                          <Clock className="h-3 w-3 shrink-0" />
+                          <span>Today at {c.time}</span>
                         </div>
                       </div>
 
@@ -1244,15 +1251,17 @@ function CadenceSchedulerPage() {
                                 }
                               }}
                             />
-                            <select
+                            <CustomSelect
                               value={checkInStatuses[c.id] || "completed"}
-                              onChange={(e) => setCheckInStatuses({ ...checkInStatuses, [c.id]: e.target.value })}
-                              className="bg-white border border-slate-200 rounded-md px-2 py-1.5 text-[10px] font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400"
-                            >
-                              <option value="not_started">Not Started</option>
-                              <option value="completed">Completed</option>
-                              <option value="cancelled">Cancelled</option>
-                            </select>
+                              onChange={(v) => setCheckInStatuses({ ...checkInStatuses, [c.id]: v })}
+                              options={[
+                                { value: "not_started", label: "Not Started" },
+                                { value: "completed", label: "Completed" },
+                                { value: "cancelled", label: "Cancelled" },
+                              ]}
+                              className="w-[110px]"
+                              triggerClassName="h-7 py-1 px-2 text-[10px]"
+                            />
                           </div>
                           <Button
                             size="icon"
@@ -1296,11 +1305,11 @@ function CadenceSchedulerPage() {
             </div>
 
             {/* PENDING Column */}
-            <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
-              <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-amber-50/80">
+            <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-border/60 bg-muted/30 h-full min-h-[500px]">
+              <div className="flex items-center gap-2 rounded-t-xl border-b border-border/60 px-3 py-2.5 bg-amber-50/80 min-h-[52px]">
                 <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
-                <h3 className="text-sm font-semibold text-slate-900 flex-1">Pending Catch-ups</h3>
-                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/80 px-1.5 text-xs font-medium text-slate-500">
+                <h3 className="text-sm font-semibold text-foreground flex-1">Pending Catch-ups</h3>
+                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-background/80 px-1.5 text-xs font-medium text-muted-foreground">
                   {cadences.filter((c) => c.date !== TODAY_DATE_STR && c.status !== "completed").length}
                 </span>
               </div>
@@ -1311,22 +1320,24 @@ function CadenceSchedulerPage() {
                   .map((c) => (
                     <div
                       key={c.id}
-                      className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-amber-500/30 hover:shadow-md space-y-3"
+                      className="block rounded-lg border border-border/80 bg-card p-3 shadow-sm transition-shadow hover:border-primary/30 hover:shadow-md space-y-3"
                     >
                       {/* Item Header */}
-                      <div className="flex items-start gap-3">
-                        <ConsultantInitialsBadge
-                          name={c.consultant}
-                          className="h-10 w-10 border-2 border-amber-200 text-xs text-amber-800"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-slate-800 truncate">
-                            {c.client} /{" "}
-                            <span className="text-slate-500 font-medium">{c.project}</span>
-                          </p>
-                          <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-0.5 truncate">
-                            <span className="font-semibold">{c.consultant}</span> &bull; <CalendarIcon className="w-3.5 h-3.5 text-slate-400 ml-1" /> {c.date} at {c.time}
-                          </p>
+                      <div>
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <span className="inline-block max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800">
+                            {c.client}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold leading-snug text-foreground">
+                          {c.project}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                          {c.consultant}
+                        </p>
+                        <div className="mt-3 flex items-center gap-1 text-[10px] text-muted-foreground pt-2 border-t border-border/60">
+                          <CalendarIcon className="h-3 w-3 shrink-0" />
+                          <span>{c.date} at {c.time}</span>
                         </div>
                       </div>
 
@@ -1350,15 +1361,17 @@ function CadenceSchedulerPage() {
                                 }
                               }}
                             />
-                            <select
+                            <CustomSelect
                               value={checkInStatuses[c.id] || "completed"}
-                              onChange={(e) => setCheckInStatuses({ ...checkInStatuses, [c.id]: e.target.value })}
-                              className="bg-white border border-slate-200 rounded-md px-2 py-1.5 text-[10px] font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400"
-                            >
-                              <option value="not_started">Not Started</option>
-                              <option value="completed">Completed</option>
-                              <option value="cancelled">Cancelled</option>
-                            </select>
+                              onChange={(v) => setCheckInStatuses({ ...checkInStatuses, [c.id]: v })}
+                              options={[
+                                { value: "not_started", label: "Not Started" },
+                                { value: "completed", label: "Completed" },
+                                { value: "cancelled", label: "Cancelled" },
+                              ]}
+                              className="w-[110px]"
+                              triggerClassName="h-7 py-1 px-2 text-[10px]"
+                            />
                           </div>
                           <Button
                             size="icon"
@@ -1395,11 +1408,11 @@ function CadenceSchedulerPage() {
             </div>
 
             {/* COMPLETED Column */}
-            <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-slate-200/60 bg-slate-50/30">
-              <div className="flex items-center gap-2 rounded-t-xl border-b border-slate-200/60 px-3 py-2.5 bg-emerald-50/80">
+            <div className="flex flex-1 min-w-[320px] flex-col rounded-xl border border-border/60 bg-muted/30 h-full min-h-[500px]">
+              <div className="flex items-center gap-2 rounded-t-xl border-b border-border/60 px-3 py-2.5 bg-emerald-50/80 min-h-[52px]">
                 <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-                <h3 className="text-sm font-semibold text-slate-900 flex-1">Completed</h3>
-                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/80 px-1.5 text-xs font-medium text-slate-500">
+                <h3 className="text-sm font-semibold text-foreground flex-1">Completed</h3>
+                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-background/80 px-1.5 text-xs font-medium text-muted-foreground">
                   {cadences.filter((c) => c.status === "completed").length}
                 </span>
               </div>
@@ -1410,35 +1423,33 @@ function CadenceSchedulerPage() {
                   .map((c) => (
                     <div
                       key={c.id}
-                      className="block rounded-lg border border-slate-200/80 bg-white p-3 shadow-sm transition-shadow hover:border-emerald-500/30 hover:shadow-md space-y-3"
+                      className="block rounded-lg border border-border/80 bg-card p-3 shadow-sm transition-shadow hover:border-primary/30 hover:shadow-md space-y-3"
                     >
                       {/* Header */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-start gap-3">
-                          <ConsultantInitialsBadge
-                            name={c.consultant}
-                            className="h-8 w-8 border-2 border-emerald-200 text-[10px] text-emerald-700"
+                      <div>
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <span className="inline-block max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-800">
+                            {c.client}
+                          </span>
+                          <div
+                            className={`h-4 w-4 rounded-full shrink-0 border ${c.rag === "Green"
+                              ? "bg-emerald-500 border-emerald-600"
+                              : c.rag === "Amber"
+                                ? "bg-amber-500 border-amber-600"
+                                : "bg-red-500 border-red-600"
+                              }`}
                           />
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-800 truncate">
-                              {c.client} /{" "}
-                              <span className="text-slate-500 font-medium">{c.project}</span>
-                            </p>
-                            <p className="text-[10px] text-slate-400 font-medium">
-                              {c.consultant} · {c.date}
-                            </p>
-                          </div>
                         </div>
-
-                        {/* RAG Dot */}
-                        <div
-                          className={`h-4.5 w-4.5 rounded-full shrink-0 border ${c.rag === "Green"
-                            ? "bg-emerald-500 border-emerald-600"
-                            : c.rag === "Amber"
-                              ? "bg-amber-500 border-amber-600"
-                              : "bg-red-500 border-red-600"
-                            }`}
-                        />
+                        <p className="text-sm font-semibold leading-snug text-foreground">
+                          {c.project}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                          {c.consultant}
+                        </p>
+                        <div className="mt-3 flex items-center gap-1 text-[10px] text-muted-foreground pt-2 border-t border-border/60">
+                          <CalendarIcon className="h-3 w-3 shrink-0" />
+                          <span>{c.date}</span>
+                        </div>
                       </div>
 
                       {/* Logged Comment */}
@@ -1845,18 +1856,16 @@ function CadenceSchedulerPage() {
                   {loadingClients ? (
                     <div className="text-xs text-slate-400 p-2 italic">Loading clients...</div>
                   ) : (
-                    <select
-                      value={modalClientId}
-                      onChange={(e) => setModalClientId(e.target.value ? Number(e.target.value) : "")}
-                      className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
-                    >
-                      <option value="">Select a Client</option>
-                      {apiClients.map((cl) => (
-                        <option key={cl.id} value={cl.id}>
-                          {cl.name} ({cl.industry})
-                        </option>
-                      ))}
-                    </select>
+                    <CustomSelect
+                      value={String(modalClientId)}
+                      onChange={(v) => setModalClientId(v ? Number(v) : "")}
+                      options={apiClients.map((cl) => ({
+                        value: String(cl.id),
+                        label: `${cl.name} (${cl.industry})`,
+                      }))}
+                      placeholder="Select a Client"
+                      triggerClassName="h-10 text-xs"
+                    />
                   )}
                 </div>
 
@@ -1880,21 +1889,17 @@ function CadenceSchedulerPage() {
                   {loadingConsultants ? (
                     <div className="text-xs text-slate-400 p-2 italic">Loading consultants...</div>
                   ) : (
-                    <select
-                      value={modalConsultantId}
-                      onChange={(e) =>
-                        setModalConsultantId(e.target.value ? Number(e.target.value) : "")
-                      }
-                      className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
+                    <CustomSelect
+                      value={String(modalConsultantId)}
+                      onChange={(v) => setModalConsultantId(v ? Number(v) : "")}
+                      options={apiConsultants.map((c) => ({
+                        value: String(c.id),
+                        label: `${c.name} (${c.emp_id})`,
+                      }))}
+                      placeholder="Select a Consultant"
                       disabled={!modalClientId}
-                    >
-                      <option value="">Select a Consultant</option>
-                      {apiConsultants.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} ({c.emp_id})
-                        </option>
-                      ))}
-                    </select>
+                      triggerClassName="h-10 text-xs"
+                    />
                   )}
                 </div>
 
@@ -1903,22 +1908,20 @@ function CadenceSchedulerPage() {
                     <label className="text-slate-500 uppercase tracking-wider text-[10px]">
                       Date
                     </label>
-                    <input
-                      type="date"
-                      value={modalDate}
-                      onChange={(e) => setModalDate(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
+                    <CustomDatePicker
+                      value={modalDate ? dayjs(modalDate) : null}
+                      onChange={(d) => setModalDate(d ? d.format("YYYY-MM-DD") : "")}
+                      className="w-full"
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-slate-500 uppercase tracking-wider text-[10px]">
                       Meeting Time
                     </label>
-                    <input
-                      type="time"
+                    <CustomTimePicker
                       value={modalMeetingTime}
-                      onChange={(e) => setModalMeetingTime(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
+                      onChange={(t) => setModalMeetingTime(t)}
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -1928,16 +1931,17 @@ function CadenceSchedulerPage() {
                     <label className="text-slate-500 uppercase tracking-wider text-[10px]">
                       Duration
                     </label>
-                    <select
+                    <CustomSelect
                       value={modalTime}
-                      onChange={(e) => setModalTime(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
-                    >
-                      <option value="15 mins">15 minutes</option>
-                      <option value="30 mins">30 minutes</option>
-                      <option value="1 hr">1 hour</option>
-                      <option value="Custom">Custom slot</option>
-                    </select>
+                      onChange={setModalTime}
+                      options={[
+                        { value: "15 mins", label: "15 minutes" },
+                        { value: "30 mins", label: "30 minutes" },
+                        { value: "1 hr", label: "1 hour" },
+                        { value: "Custom", label: "Custom slot" },
+                      ]}
+                      triggerClassName="h-10 text-xs"
+                    />
                   </div>
 
                   {modalTime === "Custom" ? (
@@ -1990,17 +1994,15 @@ function CadenceSchedulerPage() {
                       <label className="text-slate-500 uppercase tracking-wider text-[10px]">
                         Frequency
                       </label>
-                      <select
-                        value={modalFrequencyWeeks}
-                        onChange={(e) => setModalFrequencyWeeks(Number(e.target.value))}
-                        className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
-                      >
-                        {CADENCE_FREQUENCY_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                      <CustomSelect
+                        value={String(modalFrequencyWeeks)}
+                        onChange={(v) => setModalFrequencyWeeks(Number(v))}
+                        options={CADENCE_FREQUENCY_OPTIONS.map((opt) => ({
+                          value: String(opt.value),
+                          label: opt.label,
+                        }))}
+                        triggerClassName="h-10 text-xs"
+                      />
                       <p className="text-[10px] text-slate-400 font-medium">
                         {getCadenceFrequencyLabel(modalFrequencyWeeks)} schedule
                       </p>
@@ -2009,12 +2011,10 @@ function CadenceSchedulerPage() {
                       <label className="text-slate-500 uppercase tracking-wider text-[10px]">
                         End Date (Till Date)
                       </label>
-                      <input
-                        type="date"
-                        value={modalTillDate}
-                        onChange={(e) => setModalTillDate(e.target.value)}
-                        min={modalDate || undefined}
-                        className="w-full bg-white border border-slate-200 rounded-md p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-400 font-semibold"
+                      <CustomDatePicker
+                        value={modalTillDate ? dayjs(modalTillDate) : null}
+                        onChange={(d) => setModalTillDate(d ? d.format("YYYY-MM-DD") : "")}
+                        className="w-full"
                       />
                     </div>
                   </div>
